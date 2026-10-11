@@ -19,6 +19,8 @@ export interface Session {
   user: string
   admin: boolean
   at: string
+  /** Ties an admin session to the current password; changing it signs everyone out. */
+  key?: string
 }
 
 async function sha256(text: string): Promise<string> {
@@ -35,7 +37,7 @@ export async function signIn(user: string, password: string): Promise<Session | 
   if (!USERS.includes(user.trim().toLowerCase())) return 'user'
   // Ignore accidental leading/trailing spaces from autofill or mobile keyboards.
   if ((await sha256(`${SALT}:${password.trim()}`)) !== HASH) return 'password'
-  const session: Session = { user: USER, admin: true, at: new Date().toISOString() }
+  const session: Session = { user: user.trim().toLowerCase(), admin: true, at: new Date().toISOString(), key: HASH.slice(0, 12) }
   saveSession(session)
   return session
 }
@@ -51,7 +53,7 @@ export function loadSession(): Session | null {
     const raw = localStorage.getItem(SESSION_KEY)
     const s = raw ? (JSON.parse(raw) as Session) : null
     // An admin session is only valid while this build still has the same admin configured.
-    if (s?.admin && (!loginConfigured || !USERS.includes(s.user))) return null
+    if (s?.admin && (!loginConfigured || !USERS.includes(s.user) || s.key !== HASH.slice(0, 12))) return null
     return s
   } catch {
     return null

@@ -6,7 +6,9 @@
 // The public phone-app build (mode "pages") never contains admin config, even if a local
 // .env.local exists: the constant MODE check lets the bundler drop these values entirely.
 const PUBLIC_BUILD = import.meta.env.MODE === 'pages'
-const USER = PUBLIC_BUILD ? '' : (import.meta.env.VITE_ADMIN_USER ?? '').toLowerCase()
+// One or more accepted usernames, comma-separated (e.g. a spelling alias).
+const USERS = PUBLIC_BUILD ? [] : (import.meta.env.VITE_ADMIN_USER ?? '').toLowerCase().split(',').map((u) => u.trim()).filter(Boolean)
+const USER = USERS[0] ?? ''
 const SALT = PUBLIC_BUILD ? '' : (import.meta.env.VITE_ADMIN_SALT ?? '')
 const HASH = PUBLIC_BUILD ? '' : (import.meta.env.VITE_ADMIN_HASH ?? '')
 const SESSION_KEY = 'afk-session'
@@ -25,10 +27,14 @@ async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export async function signIn(user: string, password: string): Promise<Session | null> {
-  if (!loginConfigured || !window.isSecureContext) return null
-  const ok = user.trim().toLowerCase() === USER && (await sha256(`${SALT}:${password}`)) === HASH
-  if (!ok) return null
+export type SignInError = 'unavailable' | 'insecure' | 'user' | 'password'
+
+export async function signIn(user: string, password: string): Promise<Session | SignInError> {
+  if (!loginConfigured) return 'unavailable'
+  if (!window.isSecureContext) return 'insecure'
+  if (!USERS.includes(user.trim().toLowerCase())) return 'user'
+  // Ignore accidental leading/trailing spaces from autofill or mobile keyboards.
+  if ((await sha256(`${SALT}:${password.trim()}`)) !== HASH) return 'password'
   const session: Session = { user: USER, admin: true, at: new Date().toISOString() }
   saveSession(session)
   return session
@@ -45,7 +51,7 @@ export function loadSession(): Session | null {
     const raw = localStorage.getItem(SESSION_KEY)
     const s = raw ? (JSON.parse(raw) as Session) : null
     // An admin session is only valid while this build still has the same admin configured.
-    if (s?.admin && (!loginConfigured || s.user !== USER)) return null
+    if (s?.admin && (!loginConfigured || !USERS.includes(s.user))) return null
     return s
   } catch {
     return null

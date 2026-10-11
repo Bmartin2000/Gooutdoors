@@ -67,7 +67,7 @@ interface GameValue {
   resetAll: () => Promise<void>
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>
   session: auth.Session | null
-  signIn: (user: string, password: string) => Promise<boolean>
+  signIn: (user: string, password: string) => Promise<auth.SignInError | null>
   continueAsGuest: () => void
   signOut: () => void
   adminActions: {
@@ -495,8 +495,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (user: string, password: string) => {
     const s = await auth.signIn(user, password)
-    if (s) setSession(s)
-    return !!s
+    if (typeof s === 'string') return s
+    setSession(s)
+    return null
   }, [])
   const continueAsGuest = useCallback(() => setSession(auth.guestSession()), [])
   const signOut = useCallback(() => {

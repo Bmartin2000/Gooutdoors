@@ -15,11 +15,19 @@ export default function LoginScreen() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const ok = await signIn(user, password)
+    const err = await signIn(user, password)
     setBusy(false)
-    if (!ok) {
-      setError('Wrong username or password.')
-      setPassword('')
+    if (err) {
+      setError(
+        err === 'user'
+          ? 'Unknown username.'
+          : err === 'password'
+            ? 'Wrong password.'
+            : err === 'insecure'
+              ? 'Sign-in only works on this computer at http://localhost:5173 (or https).'
+              : 'Sign-in is not set up in this build.',
+      )
+      if (err === 'password') setPassword('')
     }
   }
 

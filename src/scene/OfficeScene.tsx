@@ -658,7 +658,7 @@ function MainMonitor({ glow }: { glow: string }) {
 export type OfficeView = 'desk' | 'room'
 
 const VIEWS = {
-  desk: { pos: new THREE.Vector3(0.25, 1.31, -1.08), target: new THREE.Vector3(0.25, 1.33, -2.6), fov: 52 },
+  desk: { pos: new THREE.Vector3(0.25, 1.36, -0.65), target: new THREE.Vector3(0.25, 1.36, -2.6), fov: 60 },
   room: { pos: new THREE.Vector3(7.6, 6.0, 8.6), target: new THREE.Vector3(-0.2, 0.85, -0.95), fov: 30 },
 }
 
@@ -684,7 +684,15 @@ function CameraRig({ view, angle, reduced, onScreenRect, onSettled, onBotPoint }
     const cam = camera as THREE.PerspectiveCamera
     const goal = VIEWS[view]
     let pos = goal.pos
-    if (view === 'room') {
+    if (view === 'desk') {
+      // Fit the entire desk (including Moss), even on a tall phone. The monitor
+      // remains in the scene; the separate Open monitor action enlarges the UI.
+      const aspect = size.width / Math.max(1, size.height)
+      const distance = Math.max(1.95, 2.9 / (2 * Math.tan(THREE.MathUtils.degToRad(goal.fov / 2)) * aspect))
+      roomPos.copy(goal.pos)
+      roomPos.z = goal.target.z + distance
+      pos = roomPos
+    } else {
       const aspect = size.width / Math.max(1, size.height)
       const k = aspect < 0.9 ? 1.45 : aspect < 1.25 ? 1.18 : 1
       roomPos.copy(goal.pos).multiplyScalar(k)

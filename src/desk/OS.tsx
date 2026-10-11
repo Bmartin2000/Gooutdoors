@@ -89,7 +89,7 @@ function Toasts() {
   )
 }
 
-export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'full'; style?: CSSProperties; onLookAround?: () => void }) {
+export default function OS({ mode, style, onLookAround, preview = false }: { mode: 'monitor' | 'full'; style?: CSSProperties; onLookAround?: () => void; preview?: boolean }) {
   const { profile, app, openApp, session, signOut } = useGame()
   const isAdmin = !!session?.admin
   const dock = isAdmin ? [...DOCK, { id: 'admin' as OSApp, label: 'Admin', icon: ShieldCheck }] : DOCK
@@ -102,7 +102,7 @@ export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'f
     app === 'admin' && isAdmin ? <AdminApp /> : app === 'inbox' ? <InboxApp /> : app === 'work' ? <WorkApp /> : app === 'skills' ? <SkillsApp /> : app === 'shop' ? <ShopApp onLookAround={onLookAround} /> : app === 'outside' ? <OutsideApp /> : <ToolsApp />
 
   return (
-    <div className={`os os--${mode}`} style={style}>
+    <div className={`os os--${mode} ${preview ? 'os--preview' : ''}`} style={style} inert={preview || undefined} aria-hidden={preview || undefined}>
       <header className="os-bar">
         <div className="os-bar__left">
           <BrandMark size={18} />

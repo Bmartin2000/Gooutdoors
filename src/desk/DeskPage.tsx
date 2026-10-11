@@ -54,7 +54,8 @@ export default function DeskPage() {
   const [botPoint, setBotPoint] = useState<{ x: number; y: number } | null>(null)
   const { reducedMotion } = usePreferences(settings)
   const [webgl, setWebgl] = useState(hasWebGL)
-  const [view, setView] = useState<OfficeView>('desk')
+  const [view, setView] = useState<OfficeView>('room')
+  const [expanded, setExpanded] = useState(false)
   const [angle, setAngle] = useState(0)
   const [growth, setGrowth] = useState<string | null>(null)
   const previous = useRef<UpgradeId[] | null>(null)
@@ -85,11 +86,21 @@ export default function DeskPage() {
   const onSettled = useCallback((v: OfficeView) => setSettled(v), [])
   const onBotPoint = useCallback((p: { x: number; y: number } | null) => setBotPoint(p), [])
 
-  const full = !webgl || viewport.w < MIN_VW || viewport.h < MIN_VH
+  const compact = viewport.w < MIN_VW || viewport.h < MIN_VH
+  const full = !webgl || expanded
   const mounted = !full && view === 'desk' && settled === 'desk' && rect !== null
-  const showOS = view === 'desk' && (mounted || full)
+  const showOS = !webgl || (view === 'desk' && (mounted || full))
+  const preview = mounted && compact
+  const monitorStyle = mounted && rect ? {
+    left: rect.left, top: rect.top,
+    width: preview ? MIN_VW : rect.width,
+    height: preview ? rect.height * MIN_VW / rect.width : rect.height,
+    transform: preview ? `scale(${rect.width / MIN_VW})` : undefined,
+    transformOrigin: 'top left',
+  } : undefined
 
   const lookAround = () => {
+    setExpanded(false)
     setSettled(null)
     setView((v) => (v === 'desk' ? 'room' : 'desk'))
   }
@@ -97,11 +108,11 @@ export default function DeskPage() {
   return (
     <div className={`desk desk--stage-${natureStage(profile.upgrades)}`}>
       {webgl && (
-        <div className={`desk__scene ${full && view === 'desk' ? 'is-dimmed' : ''}`} aria-hidden>
+        <div className={`desk__scene ${expanded ? 'is-dimmed' : ''}`} aria-hidden>
           <SceneBoundary onFail={() => setWebgl(false)}>
             <Suspense fallback={null}>
               <OfficeScene
-                view={full ? 'room' : view}
+                view={view}
                 angle={angle}
                 talking={!!moss}
                 onBotPoint={onBotPoint}
@@ -121,14 +132,23 @@ export default function DeskPage() {
       {showOS && !needsLogin && (
         <OS
           mode={mounted ? 'monitor' : 'full'}
-          style={mounted && rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : undefined}
+          style={monitorStyle}
+          preview={preview}
           onLookAround={webgl ? lookAround : undefined}
         />
       )}
 
-      {view === 'desk' && !needsLogin && <MossBubble anchor={mounted ? botPoint : null} />}
+      {view === 'desk' && !needsLogin && !preview && <MossBubble anchor={mounted ? botPoint : null} />}
 
-      {view === 'room' && (
+      {webgl && view === 'desk' && !needsLogin && (
+        <div className={`desk-controls ${expanded ? 'is-expanded' : ''}`}>
+          {!expanded && <p>At your desk with Moss <span>Open the monitor to work, or stand up to explore.</span></p>}
+          <button type="button" className="btn btn--primary" onClick={() => setExpanded((v) => !v)}>{expanded ? 'Back to desk' : 'Open monitor'}</button>
+          {!expanded && <button type="button" className="btn" onClick={lookAround}>Stand up · Office</button>}
+        </div>
+      )}
+
+      {webgl && view === 'room' && !needsLogin && (
         <div className="room-hud">
           <p className="room-hud__title">{growth ? '🌱 Your office is growing!' : 'Your little sanctuary'}</p>
           <p className="room-hud__sub" role="status">{growth ?? `${profile.upgrades.filter((id) => PLANT_IDS.includes(id)).length}/${PLANT_IDS.length} plants · Each leaf makes this place more alive.`}</p>
@@ -138,7 +158,7 @@ export default function DeskPage() {
             <button className="btn" aria-label="Look right" onClick={() => setAngle((a) => Math.min(0.9, a + 0.3))}>Right ↷</button>
           </div>
           <button type="button" className="btn btn--primary btn--lg" onClick={lookAround}>
-            Sit back down
+            Sit at the desk
           </button>
         </div>
       )}

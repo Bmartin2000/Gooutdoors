@@ -176,6 +176,7 @@ export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'f
               </button>
             )
           })}
+          {onLookAround && <button type="button" className="os-dock__item" onClick={onLookAround}><Eye size={18} aria-hidden /><span>Office</span></button>}
           <div className="os-dock__spacer" />
           <div className="os-dock__job" title={profile.activeJob ? profile.activeJob.offer.title : 'No active job'}>
             <Briefcase size={14} aria-hidden />

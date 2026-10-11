@@ -50,6 +50,10 @@ export default function OutsidePage() {
   const camera = useRef<HTMLInputElement>(null)
   const library = useRef<HTMLInputElement>(null)
   const w = useWalk(!!pairing?.demo)
+  const backToGame = async () => {
+    await w.releaseWakeLock()
+    navigate('/')
+  }
 
   // Pairing from the desk QR: /outside?pair=<token>&demo=1
   useEffect(() => {
@@ -224,11 +228,6 @@ export default function OutsidePage() {
   return (
     <div className="outside">
       <header className="outside__top">
-        {(
-          <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back to the desk" title="Back to the desk">
-            <ArrowLeft size={20} />
-          </button>
-        )}
         <BrandMark size={26} />
         <span className="outside__brand">
           AFK<span className="wordmark__ext">.exe</span> <span className="muted">Outside</span>
@@ -246,6 +245,10 @@ export default function OutsidePage() {
           )
         )}
       </header>
+      <nav className="outside__game-nav" aria-label="Game navigation">
+        <button type="button" className="btn btn--primary btn--block" onClick={() => void backToGame()}><ArrowLeft size={20} /> Back to game · Office & jobs</button>
+        {w.walk && !w.walk.endedAt && <p className="small muted">Your walk stays saved. GPS resumes when you return to Outside.</p>}
+      </nav>
       {showLogin && !isAdmin && <LoginScreen onClose={() => setShowLogin(false)} />}
 
       <input ref={camera} type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" hidden onChange={(e) => { void onFile(e.target.files?.[0], 'camera'); e.target.value = '' }} />

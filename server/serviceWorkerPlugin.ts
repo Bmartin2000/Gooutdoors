@@ -54,7 +54,22 @@ self.addEventListener('fetch', (event) => {
 
   // App routes: network first so updates land, cached shell when offline.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match(BASE + 'index.html', { ignoreVary: true })));
+    event.respondWith((async () => {
+      try {
+        // Fetch the app shell rather than a route's GitHub Pages 404. A unique URL
+        // also avoids a previously cached HTML document after a deployment.
+        const shell = new URL(BASE + 'index.html', self.location.origin);
+        shell.searchParams.set('afk-update', Date.now().toString());
+        const response = await fetch(shell.href, { cache: 'no-store' });
+        if (!response.ok) throw new Error('App shell unavailable');
+        const cache = await caches.open(CACHE);
+        await cache.put(BASE + 'index.html', response.clone());
+        return response;
+      } catch {
+        const cache = await caches.open(CACHE);
+        return await cache.match(BASE + 'index.html') || Response.error();
+      }
+    })());
     return;
   }
   // Hashed assets: cache first.

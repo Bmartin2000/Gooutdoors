@@ -268,6 +268,8 @@
   border-color: transparent;
 }
 .walk-reward-preview { padding: 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--accent-soft); text-align: left; display: grid; gap: 8px; font-size: 14px; }
+.outside__game-nav { position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 8; padding: 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); display: grid; gap: 6px; }
+@media (max-width: 600px) { .outside__top { flex-wrap: wrap; } }
 .walk-reward-preview strong { color: var(--accent); }
 .walk-reward-preview ol { padding-left: 20px; display: grid; gap: 6px; }
 .outside__leaf .moss-face { width: 60px; height: 60px; animation: friend-bob 3s ease-in-out infinite; }

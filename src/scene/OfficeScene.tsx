@@ -355,7 +355,7 @@ function Room({ palette, reduced }: { palette: Palette; reduced: boolean }) {
       ))}
       {/* window frame + glass glow */}
       <mesh position={[-3.75, 1.725, -0.7]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[3.2, 2.6]} />
+        <planeGeometry args={[3.0, 2.0]} />
         <LerpMaterial color={palette.glass} reduced={reduced} emissive={palette.glass} />
       </mesh>
       {[1.0, 2.45].map((y) => (

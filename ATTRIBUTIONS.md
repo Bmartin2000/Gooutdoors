@@ -1,6 +1,6 @@
 # Attributions
 
-AFK.exe's original code is MIT-licensed (see `LICENSE`). It builds on the open-source work listed below. Every installed package is checked with `npm run licenses:check`: 148 packages, all MIT, ISC, Apache-2.0, BSD-3-Clause, MPL-2.0 or OFL-1.1.
+AFK.exe's original code is MIT-licensed (see `LICENSE`). It builds on the open-source work listed below. Every installed package is checked with `npm run licenses:check`: every package, all MIT, ISC, Apache-2.0, BSD-3-Clause, MPL-2.0 or OFL-1.1.
 
 ## AI model and runtime
 
@@ -30,6 +30,7 @@ AFK.exe's original code is MIT-licensed (see `LICENSE`). It builds on the open-s
 | Package | License |
 | --- | --- |
 | vite, @vitejs/plugin-react | MIT |
+| @vitejs/plugin-basic-ssl (local self-signed HTTPS for `start:lan`) | MIT |
 | typescript | Apache-2.0 |
 | vitest | MIT |
 | oxlint | MIT |
@@ -39,8 +40,7 @@ AFK.exe's original code is MIT-licensed (see `LICENSE`). It builds on the open-s
 
 All visuals are original and were created for this project:
 
-- the 3D workspace (procedural three.js geometry, with no external models or textures)
-- the SVG room illustration
+- the 3D office and its items (procedural three.js geometry, with no external models or textures)
 - the brand mark, favicon and app icons (drawn programmatically)
 - the plant-growth animation and the Moss companion avatar
 

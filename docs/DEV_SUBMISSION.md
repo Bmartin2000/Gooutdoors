@@ -1,5 +1,5 @@
 ---
-title: AFK.exe — a dev workspace that only grows when you step away (local Qwen3.5 vision + Ollama)
+title: AFK.exe — a dev office that only comes alive when you go outside (GPS walks + local Qwen3.5 vision)
 published: false
 tags: devchallenge, hf26challenge
 ---
@@ -8,32 +8,33 @@ tags: devchallenge, hf26challenge
 
 ## What I Built
 
-**AFK.exe** is a game about your developer workspace, and the only way to improve it is to leave it.
+**AFK.exe** puts you at a desk in a small 3D office. The whole game runs on the computer in front of you.
 
-It opens on a cold, graphite 3D room: one desk, one monitor, and a small robot companion called Moss. A client contract is waiting. The first one is *"Bug Fix: The Broken Counter"*, a progress badge that crashes for anyone with exactly one task. It is a real off-by-one bug. You pick one of four fixes and AFK.exe runs authored test cases against your choice, showing actual outputs, including the real `TypeError`. It takes about 90 seconds.
+Client jobs land in your inbox every hour, with a chime and a desktop notification if the tab is in the background. Each job is a real, two-minute coding problem: an off-by-one error that crashes a progress badge, a type guard that lies about `null`, an `await` inside `forEach` that silently returns nothing, a refactor that passes every test and is still O(n²). Every option you pick is run against authored test cases, and you see the real outputs. No AI grades your code.
 
-Fixing it doesn't give you XP. It gives you a **final mission**: *"Touch Grass."*
+Jobs pay money, XP and skill points, and they have **requirements**. *"Needs Testing 1 · Level 2"* means you take the jobs you're qualified for and grow into the ones you aren't, the way a real career works.
 
-> **Nature's Debugger:** Find something growing through or around a crack. Nature repairing a broken system.
+The twist is **energy**. Every job uses some, and sitting at the desk barely refills it. A walk outside refills it completely:
 
-Every mission has an easier variant that works on any street ("photograph any living plant"), plus short safety notes: public paths only, no picking, a balcony counts. The outdoor screen shows one sentence and one camera button. You take one photo and put the phone away.
+1. Scan a QR code, tap **Start walk**, and pocket your phone.
+2. The phone measures the walk with **GPS, entirely offline**: 10 minutes and 150 m from where you started. It filters inaccurate fixes and teleport jumps.
+3. A verified walk alone is worth fresh-air tokens and XP. No task is required.
+4. Partway through, **the phone buzzes**: *"Mission unlocked: find something growing through a crack."* Take one photo and pocket the phone again.
+5. Back home, the phone hands the walk to your desk over Wi-Fi.
+6. An **open-weight vision model running on your own computer** checks the photo, worth bonus tokens.
 
-Back at your desk, an **open-weight vision model running on your own laptop** checks the photo. If it fits, you get +250 XP and level up. The room changes, first with a seedling, then with daylight, leaf shadows and finally a warm, plant-filled studio. A **real developer tool** also unlocks:
+Tokens buy **plants**: a seedling beside the keyboard, a monstera, a hanging pothos, wall vines. Money from jobs buys **gear**: a lamp, coffee, a second monitor. The office starts cool and graphite and turns warm and green, and the plants can only come from outside. Levels also unlock real local AI tools that run on the same model: an **AI Debugger**, a **Code Optimizer** and a **Test Generator**.
 
-- **AI Debugger** (after *Nature's Debugger*): paste code, describe the symptom, and get suspected issues, a fix, an explanation and verification steps.
-- **Code Optimizer** (after *Pattern Hunter*): complexity before and after, refactor suggestions, and caveats.
-- **Test Generator** (after *Test the Wild*): a Vitest file with edge cases first.
-
-It's for developers who know they should take a walk and don't. AFK.exe doesn't nag, block or use streaks. It makes stepping outside the way your tools get better. The screen is meant to be the shortest part of the experience.
+It's for developers who know they should step away and don't. AFK.exe never blocks you, nags you or uses streaks. It just makes the outside the place where your work recharges.
 
 ## Demo
 
-<!-- TODO: replace with your video link (YouTube/Vimeo/Loom) -->
-🎬 **Video:** `{% embed https://YOUR-VIDEO-URL %}`
+<!-- TODO: replace with your video link -->
+🎬 `{% embed https://YOUR-VIDEO-URL %}`
 
-The video shows real footage of the full loop: Level 1 room → contract → outdoor photo → local verification → reward → the room grows → the AI Debugger running on pasted code.
+The video is real footage: the seated office view, a job notification, a job done and paid, energy running low, a real walk with the phone buzzing, the walk credited at the desk, the photo checked by the local model, and a plant growing on the desk.
 
-There is no hosted demo on purpose. The whole point is that the model runs on *your* machine. Setup takes three commands (see Code).
+There is no hosted demo on purpose: the model runs on *your* machine.
 
 ## Code
 
@@ -43,10 +44,11 @@ There is no hosted demo on purpose. The whole point is that the model runs on *y
 ```bash
 ollama pull qwen3.5:4b
 npm install
-npm run dev
+npm run dev          # the desk
+npm run start:lan    # + your phone, over local HTTPS
 ```
 
-Licensed MIT. Third-party licenses are in `ATTRIBUTIONS.md`.
+The code is MIT-licensed. Third-party licenses are listed in `ATTRIBUTIONS.md`.
 
 ## How I Built It
 
@@ -55,48 +57,56 @@ Licensed MIT. Third-party licenses are in `ATTRIBUTIONS.md`.
 - **Qwen3.5 4B** (`qwen3.5:4b`), an Apache-2.0, open-weight multimodal model.
 - **Ollama** as the local inference server.
 
-One 4B model does all of the AI work, through task-specific prompts and JSON schemas:
+One model does all the AI work, through separate prompts and JSON schemas:
 
-1. **Photo verification.** The photo is downscaled to 640 px and sent to `/api/chat` as a base64 image, with a JSON schema in Ollama's `format` field and `temperature: 0`. The prompt describes the mission's visual criteria, tells the model to ignore any text inside the image, not to infer location, and to mark uncertain photos for review. The answer `{ matches, confidence, reason, detectedElements, needsReview }` is **validated with zod** before anything trusts it. A reward needs a match, at least 0.6 confidence, and no review flag. Anything else is put on hold, with the model's reasoning shown to the user and unlimited retries.
-2. **Developer tools.** The Debugger, Optimizer and Test Generator each have their own system prompt and output schema. Code input is capped, treated as untrusted, rendered as text, and never executed.
-3. **Moss, the assistant.** Streamed plain text.
+- **Photo missions.** The photo is downscaled to 640 px and sent to `/api/chat` as a base64 image, with a JSON schema in `format` and `temperature: 0`. The prompt describes what the mission looks for, tells the model to ignore any text inside the image and not to infer location, and to mark uncertain photos for review. The answer is validated with zod before anything trusts it. A reward needs a match, at least 0.6 confidence and no review flag. Everything else is put on hold with the model's reason shown, and retries are unlimited.
+- **Developer tools.** The Debugger, Optimizer and Test Generator each have a task prompt and an output schema. Input is capped and treated as untrusted, and output is rendered as text and never executed.
 
-I was honest with myself about what a 4B model on a laptop can do, and it surprised me in a good way. In testing, `qwen3.5:4b` **rejected** a photorealistic digital flower as *"digitally rendered… not a real living plant"*, rejected an abstract wallpaper, and said a three-panel collage *"does not show a single living plant up close."* It put a distant forest shot **on hold** for the strict variant, and verified it for the inclusive "any green signal" variant. Being that strict is what makes the reward feel earned.
+The model is strict enough that rewards feel earned. In testing it rejected a photorealistic digital flower (*"digitally rendered… not a real living plant"*), an abstract wallpaper, a three-panel collage and a computer-drawn image. It verified a real forest photo for the "any living plant" mission.
 
-**The stack:**
+**The office.** It's one procedural React Three Fiber room with no downloaded models. The trick that makes it feel like *sitting at* the computer: every frame, the camera rig projects the monitor's four corners to screen pixels, and **the real DOM OS is laid exactly over the 3D screen**. It stays crisp, clickable and screen-reader friendly. Narrow windows fall back to a full-screen OS over a blurred room.
 
-- Vite, React 19, TypeScript and React Router.
-- three.js with React Three Fiber for a single procedural diorama with four growth stages. There are no downloaded models or textures, and a layered SVG fallback is shown whenever WebGL is missing or the scene is still loading.
-- IndexedDB (via `idb`) stores photos, progress and rewards.
-- A **local adapter** inside the Vite server proxies only four allow-listed Ollama routes, and only for loopback clients. A phone on the LAN can capture photos but can never reach the model.
-- A build-time **service worker** precaches the app shell, fonts, missions and the 3D chunk.
+**The phone.**
 
-**Offline was a design requirement.** Out in the field you often have no signal, so:
+- The walk is pure geometry: a haversine distance from the first good fix, and time counted only while fixes keep arriving.
+- Fixes worse than ±50 m are dropped, jumps faster than 12 m/s are rejected, and the distance must exceed twice the GPS noise at the start.
+- Browsers pause GPS when the screen is off, so **pocket mode** keeps the screen on (black and OLED-dark) through the Wake Lock API, and vibrates when a mission appears.
+- **Raw coordinates never leave the phone.** The desk only receives minutes, metres and a fix count, and it checks again that a "verified" walk actually meets its own thresholds.
 
-- The phone saves the photo locally and says *"Saved offline — verify when you return to your computer."*
-- Back home it hands the photo to the desk over the same Wi-Fi, using a pairing token from a QR code, or as a portable `.afk.json` file you can AirDrop.
-- The desk verifies it with the local model.
+**Offline end to end.**
 
-I tested this by stopping the server and reloading. The mission still loaded and the AI badge correctly read *Local AI offline*. Then I restarted the server, and the photo taken "offline" was verified.
+- Phones only allow GPS on secure pages, so `npm run start:lan` serves the app over **local HTTPS** with a certificate generated on your computer. There's one certificate warning on the phone and no outside service.
+- GPS needs no signal.
+- The phone stores walks and photos in IndexedDB until it's back on Wi-Fi, and an `.afk.json` export works over AirDrop or USB.
+- The local adapter answers model requests only from the computer itself: a phone on the LAN gets a 403.
 
-**Rewards are idempotent.** The XP, level, room stage and tool unlock are written in a single IndexedDB transaction, keyed by a completion key. Double clicks, reloads and a second photo can't grant anything twice. Unit tests cover this, along with the challenge fixtures, the AI-output parser and import validation (30 tests).
+**Correctness.**
 
-**Trade-offs I'm upfront about:**
+- Every reward (job, walk, photo) is written in one IndexedDB transaction under a unique ledger key. Double clicks, reloads and re-sent walks can't pay twice.
+- 58 unit tests cover:
+  - every job's answer key against its real outputs
+  - the economy
+  - GPS verification, including staying home, a short dash and teleports
+  - one-time grants under concurrency
+  - import validation
 
-- My laptop has no GPU. A warm photo check took about 12–35 s, and the very first request took about 3 minutes while the model loaded. The UI shows real progress and lets you cancel, and it doesn't pretend to be fast.
-- A photo can't prove where or when it was taken. AFK.exe calls the check a *plausibility* check and labels the confidence *"a model guess, not proof."*
-- Phones on plain-HTTP LAN can't reload the app offline, because service workers need HTTPS. They keep working while the tab is open, and the photos persist.
+**What I'm honest about:**
+
+- My laptop has no GPU. A warm photo check takes about 12–35 s, the first request about 3 minutes, and a tool run about 60–90 s. The UI shows real progress and lets you cancel.
+- GPS can be spoofed and a photo can't prove where or when it was taken. AFK.exe rewards stepping out, it doesn't police it.
+- There's no push service, so notifications only fire while AFK.exe is open.
+- Vibration works on Android; iOS ignores it.
 
 ## Why Does Open Innovation Matter?
 
-AFK.exe would be a worse product, or wouldn't exist at all, on a closed API.
+AFK.exe works with your **location history and photos of where you walk**. With a closed API, all of that would leave your phone. With an open-weight model and local inference, none of it does.
 
-- **Privacy is the product.** It's a game about photos of where you walk and the code you write. With local inference, neither one ever leaves your machine. There's no upload consent screen because there's no upload.
-- **Offline is real.** A closed API means "verification requires internet." An open-weight model means verification only needs your own computer.
-- **No meter running.** Every photo check and every Debugger run costs nothing. Rewards that cost money per check would turn "go outside more" into "go outside less."
-- **You own it, and you can swap it.** The model is one environment variable (`VITE_OLLAMA_MODEL`). If a better small vision model comes out tomorrow, you pull it and keep playing. Nobody can deprecate the model out from under you.
-- **Everything is inspectable.** The prompts, schemas and decision threshold are in the repo, so you can see exactly why a photo passed or failed.
+- **Privacy is the design.** Coordinates stay on the phone, photos stay on your computer, and the model runs locally. There's no upload consent screen because there's no upload.
+- **It works where you're actually going.** Parks don't have great signal. GPS, the phone app, the desk and the model all work with no internet at all.
+- **No meter running.** Every photo check and every Debugger run is free. A reward that costs money per check would quietly teach you to go outside less.
+- **You can swap the model.** The model is one environment variable. When a better small vision model ships, pull it and keep playing. Nobody can deprecate the model out from under you.
+- **Everything is inspectable.** The prompts, schemas, thresholds and GPS rules are all in the repo, so you can see exactly why a walk or a photo counted.
 
-<!-- ## My Agent Session — optional: add a DevRelay link/embed if you saved one, otherwise delete this section. -->
+<!-- ## My Agent Session — optional. AFK.exe was built with Claude Code; add a DevRelay link/embed if you saved one, otherwise delete this comment. -->
 
-<!-- ## Prize Categories — none of the listed partner technologies (Render, TabPFN, Tinker, Arduino, DigitalOcean, Gemma, Backboard, ElevenLabs, Entire, GitHub Copilot, Mastra, MongoDB Atlas, Sentry, SerpApi, Temporal, Tiger Data) are used, so this section is intentionally omitted. -->
+<!-- ## Prize Categories — none of the partner technologies are used, so this section is omitted. -->

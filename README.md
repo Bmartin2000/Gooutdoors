@@ -2,28 +2,43 @@
 
 **Code. Explore. Upgrade.** · *Your workspace grows when you step away.*
 
-AFK.exe is a developer-workspace game. You solve a short coding contract at your desk, then step outside to take a single photo. When you come back, an **open-weight vision model running on your own computer** (Qwen3.5 4B through Ollama) checks the photo. If it passes, a real AI developer tool unlocks, and your virtual studio turns from a cold graphite room into a warm, green workspace.
+You sit at a desk in a small 3D office, and the whole game runs on the computer in front of you. Client jobs arrive in your inbox every hour. You take the ones you're qualified for, ship the fix and get paid. Every job uses up energy, and the only way to fill it back up is to **go outside**. Your phone measures the walk with GPS, offline, and buzzes when a photo mission appears. When you get back, an **open-weight AI running on your own computer** (Qwen3.5 4B through Ollama) checks the photo. Fresh air buys the plants that make your office come alive.
 
 > Built for the **Hacktoberfest 2026 Open-Source AI Challenge: Week 1, "Touch Grass."**
-> No account. No cloud. No API key. Photos and code never leave your devices.
+> No account. No cloud. No API key. Photos, code and location never leave your devices.
 
-| Before: Level 1, "Cold Start" | After: Level 4, "Living System" |
+| At the desk | Outside |
 | --- | --- |
-| `docs/media/room-stage-1.png` *(add screenshot)* | `docs/media/room-stage-4.png` *(add screenshot)* |
+| `docs/media/desk.png` *(add screenshot)* | `docs/media/walk.png` *(add screenshot)* |
 
 ---
 
-## The loop
+## How it plays
 
-1. **Accept a contract.** You get a small, authored client job, for example *"Bug Fix: The Broken Counter"*: an off-by-one error that crashes a progress badge. It takes about 90 seconds.
-2. **Fix it.** Pick one of four real fixes. AFK.exe runs authored test cases against your choice and shows the actual outputs, including the real `TypeError`. Grading is deterministic. No LLM grades your code.
-3. **Final mission: Touch Grass.** One sentence and one camera button. For example: *"Find something growing through or around a crack — nature repairing a broken system."* Every mission has an easy alternative that works in a city.
-4. **Pocket your phone.** The photo is saved on the device, and that works offline.
-5. **Verify it locally.** Back at your computer, `qwen3.5:4b` looks at the photo and returns a structured verdict: `matches`, `confidence`, `reason`, `detectedElements`, `needsReview`. AFK.exe validates that verdict before trusting it.
-6. **Upgrade.** You get +250 XP and a new level. The room grows plants and catches warmer daylight. A real tool unlocks: the **AI Debugger**, then the **Code Optimizer**, then the **Test Generator**.
-7. **Use it.** Paste your own code into the tool. It runs on the same local model, with a task-specific prompt and a validated output schema.
+**At the desk** (your computer, which runs Ollama)
 
-The screen is meant to be the shortest part of the outdoor experience.
+- **Inbox.** A new client offer arrives every hour. You can set it to every 20 minutes, or every 2 minutes for a demo. You get an in-game chime, plus a desktop notification if the tab is in the background.
+- **Requirements.** Each job needs certain skills and a level, for example *Debugging 2*, *TypeScript 1* or *Level 2*. Jobs you can't take yet stay visible, show what's missing, and tell you which skill to train. You take other jobs you're qualified for in the meantime.
+- **Work.** A real, short coding task: an off-by-one error, a type guard that lies, `async` inside `forEach`, a quadratic duplicate check, a flaky float assertion and more (10 tasks across 5 skills).
+  - You get **two submissions**. Every option is run against authored test cases and you see the real outputs.
+  - You can spend **one 🌿 token on a hint**, which removes a wrong option.
+- **Pay.** Each job gives money, XP and skill points. Money buys gear for the office: a lamp, coffee, headphones, a poster, a second monitor.
+- **Energy.** Every job costs 25–45 energy. Energy refills slowly at the desk (+8 per hour) and **fully with one verified walk**.
+- **Tools.** Levels unlock real AI tools that run on the local model: AI Debugger (level 2), Code Optimizer (level 3), Test Generator (level 4). The Assistant is always available.
+- **Look around.** Click the eye icon to get up from the desk and see how your office has grown.
+
+**Outside** (your phone)
+
+1. Scan the QR code in **Outside** on the desk, then tap **Start walk** and pocket the phone.
+2. A **walk counts** after 10 minutes and 150 m from where you started, measured with GPS.
+   - GPS needs no internet.
+   - Fixes worse than ±50 m are ignored, and jumps faster than 12 m/s are rejected.
+   - The distance must also clearly exceed the GPS noise at your starting point.
+3. The phone **vibrates when a photo mission appears**, for example *"Find something growing through a crack."* Take one photo, then pocket the phone again.
+4. **Pocket mode** keeps the screen on (black, minimal light) so tracking and buzzes keep working.
+5. Back on Wi-Fi, tap **Send to my desk**, or export a file to move by AirDrop, USB or Nearby Share.
+6. The desk credits the walk once: **energy back to 100, 🌿 tokens and XP.** No task is required. Just going out counts.
+7. The local AI checks the photo for bonus 🌿. Tokens buy plants: seedling, monstera, pothos, moss rug, vines and a fig. Plants warm the daylight in the room.
 
 ## Quick start
 
@@ -38,135 +53,83 @@ npm install
 ```
 
 ```bash
-npm run ollama:check
-```
-
-```bash
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. If `ollama:check` reports that Ollama is not running, start it with `ollama serve`. On Windows and macOS the desktop app usually runs it already, so check before starting a second server.
+Open http://127.0.0.1:5173 and sit down at the desk. Check the AI with `npm run ollama:check`. If Ollama isn't running, start it with `ollama serve`.
 
-### Production / offline build
-
-```bash
-npm start
-```
-
-This builds the app and serves it at http://127.0.0.1:4173 with a service worker that precaches the app shell, fonts, mission content and the 3D scene.
-
-### Using a phone for the outdoor part
+### With your phone (local HTTPS, works offline)
 
 ```bash
 npm run start:lan
 ```
 
-1. Open **Explore** on your computer. It shows a QR code for the active mission.
-2. Scan the QR code with a phone on the same Wi-Fi. The mission opens on the phone, ready to capture.
-3. Take the photo outside. No signal is needed: the photo is stored in the phone's IndexedDB.
-4. Back on Wi-Fi, tap **Send to my computer**. The photo arrives on the desk while the Explore page is open there. Verify it there.
+- This builds the app and serves it on your Wi-Fi over **HTTPS**, using a certificate generated on your computer by `@vitejs/plugin-basic-ssl`.
+- Phones only allow GPS on secure pages, which is why HTTPS is needed. **The phone shows a certificate warning once.** That's expected: it's your own computer's certificate, and no outside service is involved.
+- The model API still answers **only** to the computer itself.
 
-If you have no shared Wi-Fi, tap **Export file** on the phone and move the `.afk.json` file by AirDrop, Nearby Share, USB or any other way. Then use **Import photo file** on the computer.
+Open the desk on that computer at https://127.0.0.1:4173. Accept the warning once, then open **Outside** and scan the QR code with your phone.
 
-## How the local AI is used
+## Local AI: what it does and doesn't do
 
-All three AI features use one local model, `qwen3.5:4b` (configurable with `VITE_OLLAMA_MODEL`). They differ in their prompts, schemas and workflows. **The model does not get smarter as you level up.** You just unlock more ways to use it.
-
-| Feature | Ollama call | Output |
+| Feature | Local model call | Guard rails |
 | --- | --- | --- |
-| Photo verification | `/api/chat` with a base64 photo (downscaled to 640 px), `format` = JSON schema, `temperature: 0` | `{ matches, confidence, reason, detectedElements, needsReview }`, validated with zod |
-| AI Debugger | `/api/chat`, JSON schema | issues, fixed code, explanation, verification steps |
-| Code Optimizer | `/api/chat`, JSON schema | complexity before/after, suggestions, refactor, caveats |
-| Test Generator | `/api/chat`, JSON schema | Vitest file, test cases, assumptions |
-| Assistant ("Moss") | `/api/chat`, streamed text | plain-text answers, shown as text nodes |
+| Photo missions | `qwen3.5:4b` vision via `/api/chat`, JSON schema, `temperature: 0`, photo downscaled to 640 px | The answer is zod-validated. A reward needs `matches`, confidence ≥ 0.6 and no review flag. Otherwise it is held, with the reason shown and unlimited retries. |
+| AI Debugger, Code Optimizer, Test Generator | `/api/chat` with task prompts and JSON schemas | Input is capped and treated as untrusted. Output is shown as text and never executed. |
+| Assistant | `/api/chat`, streamed text | Plain text |
 
-How model output is handled:
+**What it doesn't do:**
 
-- **Treated as untrusted.** Output is parsed, schema-validated, length-bounded and rendered as text. AFK.exe never uses `innerHTML` and never executes generated code.
-- **Conservative reward rule.** A reward needs `matches === true`, a confidence of at least 0.6, and `needsReview === false`. Anything else is put on hold or rejected, with the model's reason shown. Retries are unlimited. AFK.exe never claims the AI can prove *where* or *when* a photo was taken.
-- **Honest progress on slow hardware.** On a CPU-only laptop the first request also loads the model, so the UI shows real phases and elapsed time, and every request can be cancelled. Responses are streamed, which deviates from a plain `stream:false` call, purely to make progress visible.
+- There is **one model.** Levels unlock workflows, not a smarter model.
+- **Coding jobs are not graded by AI.** Answers are checked deterministically against authored fixtures.
+- **AI does not check walks.** GPS math does, on the phone.
 
-## Offline: what works where
+## Offline and privacy
 
-| Situation | What works |
-| --- | --- |
-| **First visit** | Needs the AFK.exe server (`npm run dev` / `npm start`). Installing the model needs internet once. |
-| **Computer, no internet** | Everything works. Ollama and the app are local. |
-| **Computer, AFK.exe server stopped** (production build) | The service worker serves the cached app shell. Contracts, missions, capture and saved progress still work. The AI badge correctly reads *Local AI offline*. |
-| **Phone outdoors, no signal** | An already-open mission page keeps working. Photos are saved to IndexedDB and labelled *"Saved offline — verify when you return to your computer."* |
-| **Phone back on Wi-Fi** | *Send to my computer* (same-LAN inbox), or *Export file*. |
-| **Phone over plain-HTTP LAN** | Service workers need HTTPS or localhost, so a **phone cannot reload the app from scratch without the network**. Keep the mission tab open, or serve AFK.exe over HTTPS on your LAN. Photos stored in IndexedDB survive either way. |
+| Where | Works offline | What leaves the device |
+| --- | --- | --- |
+| Phone during a walk | GPS tracking, mission buzz, photo capture, storage | Nothing |
+| Phone → desk | LAN inbox (same Wi-Fi, pairing token) or a file | Walk **summary only** (minutes, metres, fix count), plus photos re-encoded without EXIF. **No coordinates.** |
+| Desk | Everything: Ollama and the app are local | Nothing. There are no analytics, CDNs or cloud APIs. |
 
-The phone **never** runs the model, and it cannot reach Ollama. The adapter refuses every non-loopback request to the model API. IndexedDB does not sync between devices by itself: transfer is explicit, either the LAN inbox or a file.
+**Limits worth stating plainly:**
 
-## Privacy and security
-
-- No accounts, analytics, trackers, CDNs, remote fonts or cloud APIs. Fonts (Inter and JetBrains Mono, OFL-1.1) and icons (Lucide, ISC) are bundled.
-- **Local adapter** (`server/localAdapter.ts`), mounted into the Vite dev and preview servers:
-  - Binds to `127.0.0.1` by default.
-  - Allows only `GET /api/version`, `GET /api/tags`, `POST /api/show` and `POST /api/chat`, and only from loopback clients. `pull` and `delete` are refused even from localhost.
-  - Checks that the request's Origin matches the server. It sends no CORS headers.
-  - Caps request bodies at 16 MB.
-- **LAN inbox** (opt-in with `start:lan`): needs a random per-process pairing token that is shown only in the desk's QR code. It accepts only JSON, holds at most 24 items in memory, never writes to disk, and validates everything again with zod before storing it.
-- **Photos:** JPEG, PNG or WebP only, 25 MB max. They are re-encoded through a canvas on capture, which strips EXIF data, including GPS.
-- **Your data:** the Settings drawer has export backup, import and **Delete all data**.
+- **No push service, so notifications only fire while AFK.exe is open.** Background tabs are fine. Offers that arrive while the app is closed are waiting when you return.
+- **Browsers pause GPS when the screen is off.** Pocket mode keeps it on. Otherwise the phone takes a new fix whenever you look at it.
+- **The phone's service worker won't install over a self-signed certificate.** Keep the Outside tab open during a walk; walks and photos are stored on the phone either way.
+- **This is a game, not proof.** GPS can be spoofed and a photo can't prove place or time. AFK.exe checks plausibility and never claims more.
+- **Vibration works on Android.** iOS Safari ignores `navigator.vibrate`, so there the chime and the screen are the signal.
 
 ## Architecture
 
 ```
 src/
+  desk/        DeskPage (3D office + OS placement) · OS (menu bar, dock) · apps/ Inbox Work Outside Shop Skills Tools
+  outside/     OutsidePage (phone) · useWalk (GPS, wake lock, mission prompt, vibration)
+  scene/       OfficeScene: procedural R3F room, first-person + room views, screen projection
+  game/        economy (jobs, skills, energy, rewards) · location (GPS verification) · levels · types
+  content/     challenges (10 authored jobs, deterministic checks) · missions · shop
   ai/          ollamaClient · missionVerifier · developerAssistant · schemas (zod) · image
-  app/         GameContext (state + orchestration) · AIStatusContext · preferences · sound
-  components/  AppShell · LocalAIStatus · SettingsPanel · Onboarding · RewardReveal · CodeBlock
-               PhotoCapture · EvidenceCard · PhonePairing · CodeTools · AssistantChat
-  content/     contracts.ts (authored contracts, deterministic fixtures, missions) · strings.ts
-  game/        rewardEngine (pure, idempotent) · levels · types
-  pages/       Workspace · Contract · Explore · Companion
-  scene/       LivingWorkspaceScene (R3F, lazy) · RoomIllustration (SVG fallback) · WorkspaceStage
-  storage/     db (idb) · gamePersistence · transfer (export/import, zod)
-server/        localAdapter (Ollama proxy + LAN inbox) · serviceWorkerPlugin (precache manifest)
-tests/         challenges · rewardEngine · verification · persistence (fake-indexeddb) · transfer
+  storage/     db (idb v2) · gamePersistence (grantOnce: one transaction per reward) · transfer (outing/backup)
+server/        localAdapter (loopback-only Ollama proxy + LAN inbox) · serviceWorkerPlugin
+tests/         challenges · economy · location · persistence · transfer · verification (58 tests)
 ```
 
-Details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Scripts
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Dev server on 127.0.0.1:5173 |
-| `npm start` | Production build + preview on 127.0.0.1:4173, with offline cache |
-| `npm run start:lan` | The same, reachable from phones on your Wi-Fi. The model stays loopback-only. |
-| `npm test` | Vitest: challenges, reward idempotency, AI-output parsing, IndexedDB, imports |
-| `npm run typecheck` / `npm run lint` | `tsc -b` / oxlint |
-| `npm run check` | Typecheck + lint + tests + license audit + build |
-| `npm run ollama:check` | Is Ollama running and is the model installed? |
-| `npm run licenses:check` | Fails if any dependency is not under an approved open-source license |
+| `npm run dev` | Desk on 127.0.0.1:5173 |
+| `npm start` | Production build on 127.0.0.1:4173, with an offline cache |
+| `npm run start:lan` | The same over local HTTPS on your Wi-Fi, so phones can walk with GPS |
+| `npm test` | 58 unit tests |
+| `npm run check` | Typecheck, lint, tests, license audit and build |
+| `npm run ollama:check` / `npm run licenses:check` | Is the model ready? / Are all dependencies open source? |
 
-## Design notes and trade-offs
+## Licenses
 
-- **3D, then a fallback.** The workspace is a single procedural React Three Fiber diorama: no downloaded models, no HDRs. It is lazy-loaded, so the app shell paints immediately. A layered SVG version of the same four stages is shown while the scene loads, when WebGL is missing, and if the scene errors. The scene never blanks the product.
-- **Deterministic coding checks.** Challenge answers are authored fixtures run in the browser. Nothing a user types is executed.
-- **One model, honest framing.** "Unlocking" a tool unlocks a validated workflow on the same 4B model. It does not mean a smarter model or faster hardware.
-- **Lint.** The scaffold shipped with oxlint (an ESLint-compatible linter written in Rust), and it is kept in place of ESLint.
-
-## Limitations (known)
-
-- **Speed depends on your hardware.** On the CPU-only development laptop (Intel Core Ultra 7 155U, no discrete GPU), a warm photo check took about 12–35 s, the first request about 3 minutes (model load), and a Debugger run about 60 s.
-- **The vision model is strict.** In testing it rejected digital art, an abstract render and a three-panel collage, and it put a distant forest shot on hold until the inclusive variant was used. A real outdoor field test has **not** been done yet. See the checklist.
-- **The game state is not tamper-proof.** Local rewards prevent accidental double claims. They are not a security boundary.
-- **Phones on plain HTTP cannot reload the app offline** (see the offline table above).
-- **iOS Safari:** `capture="environment"` opens the camera. Native share needs iOS 15+. This has not been tested on a physical iPhone.
-
-## Roadmap
-
-- Trusted HTTPS on the LAN, so phones get full offline PWA reloads.
-- More contracts in more languages, and community-authored missions.
-- An optional choice of model (any Ollama vision model).
-- Sync of progress back to the phone.
-
-## Acknowledgements and license
-
-The original code is under the [MIT](LICENSE) license. Third-party software, fonts, icons and the model keep their own licenses: see [ATTRIBUTIONS.md](ATTRIBUTIONS.md). The **Qwen3.5 4B** weights are Apache-2.0 (from the license bundled with the Ollama model, `ollama show qwen3.5:4b --license`).
+The code is [MIT](LICENSE). Third-party licenses, including the Apache-2.0 Qwen3.5 weights, are listed in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
 **Project timeline:** the repository was created on 2026-10-11, inside the challenge window (October 5–11, 2026). Any commit made after the deadline will be listed here.

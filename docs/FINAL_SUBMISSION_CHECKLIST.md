@@ -6,40 +6,29 @@
 
 | Check | Result |
 | --- | --- |
-| `npm install`, `tsc -b`, `vite build` | PASS |
-| `npm test` (30 tests: challenges, reward idempotency, AI-output parsing, IndexedDB, imports) | PASS |
-| `oxlint` | PASS. Only fast-refresh "only-export-components" style warnings remain. |
-| `npm run licenses:check` (148 packages) | PASS |
-| Full loop in the browser: onboarding → contract (wrong, then right) → mission → photo → **live qwen3.5:4b verification** → reward reveal → AI Debugger unlocked | PASS. Verified with a real (non-field) forest photo on the "Any green signal" variant. |
-| Live rejections | PASS. Abstract render, digital-art flower, collage and a synthetic canvas image were rejected. A forest shot on the strict variant was put on hold. |
-| XP, level, tool and room survive a reload; no second grant | PASS. Covered by a unit test plus a manual reload check. |
-| AI Debugger, Code Optimizer, Test Generator against the live model | PASS. Took 60 s, 68 s and 89 s on CPU. Output quality varies, which is why the review warning is shown. |
-| Production build with the server stopped: shell, mission and capture load from the service worker; badge reads "Local AI offline" | PASS |
-| Photo captured while offline, then verified after the server came back | PASS. The model correctly rejected the synthetic image. |
-| Phone→desk handoff: QR link opened over the LAN IP, phone shows "Capture device", photo sent, desk received it "from phone" and verified it | PASS. The phone was simulated by a second browser origin on the same machine. |
-| Adapter boundaries: model API, pairing and inbox refused from the LAN IP; bad token refused; `pull`/`delete` refused even from localhost | PASS |
-| Layout at 390 px, tablet and 1440 px with no horizontal scroll | PASS at 390 and 1440. Tablet not separately screenshotted. |
-| Physical phone (iOS or Android) camera capture | **NOT TESTED** |
-| Real outdoor field test with a real "plant in a crack" photo | **NOT TESTED** |
-| Screen-reader pass (VoiceOver or NVDA) | **NOT TESTED**. Labels, roles and focus handling were implemented. |
+| `tsc -b`, `vite build`, `npm run licenses:check` | PASS |
+| `npm test`: 58 tests | PASS |
+| `oxlint` | PASS. Warnings only, no errors. |
+| Desk: first-person office, OS projected onto the monitor at 1440×900; full-screen OS over a blurred room in a narrow window | PASS (browser) |
+| Desk: accept a job, energy deducted, wrong answer shows real outputs and is struck through, right answer pays $95 / +40 XP / Debugging +1 | PASS (browser) |
+| Desk: buy the desk seedling with 🌿; it appears in the 3D office; Look around switches to the room view | PASS (browser) |
+| Phone UI at 390 px: start screen, live ring, mission sheet, toast | PASS (browser) |
+| Phone GPS logic with a **simulated** walk (harness-injected geolocation, 0.5 m/s): mission buzz fired on time (vibration pattern recorded); live distance and time | PASS, simulated |
+| Phone → desk over the LAN inbox: outing received; a verified walk credited +3 🌿 +100 XP, energy 100; re-sending the same walk not credited again; a forged "verified" walk below its thresholds rejected | PASS. Posted the way a phone does (curl to the inbox with the pairing token). |
+| `start:lan` serves HTTPS; pairing returns `https://` LAN URLs; plain HTTP refused; model API refused from the LAN IP | PASS (curl) |
+| Live `qwen3.5:4b` photo verification, Debugger, Optimizer, Test Generator | PASS. Tested earlier today: photo 12–35 s warm, tools 60–89 s. |
+| **Real phone GPS walk outdoors** (the in-app browser can't open self-signed LAN HTTPS) | **NOT TESTED** |
+| Real vibration and wake lock on a physical Android phone; iOS behaviour | **NOT TESTED** |
+| Desktop system notification for a new job | **NOT TESTED**. Implemented; needs a manual check with permission granted and the tab in the background. |
+| Screen reader pass | **NOT TESTED** |
 
 ## Your remaining personal actions
 
-1. [ ] **Field test (recommended, about 15 minutes).** Run `npm run start:lan`, scan the QR code, and go outside. Photograph a weed in a pavement crack, send it to the desk, and verify it. Write two or three honest sentences about it for the post. Don't invent results.
-2. [ ] **Screenshots** into `docs/media/`, then reference them in the README:
-   - `room-stage-1.png` (Level 1)
-   - `room-stage-4.png` (after all three missions)
-   - `mission-phone.png`, `verdict.png`, `debugger.png`
-3. [ ] **Screen recording** following `docs/DEMO_SCRIPT.md`. Use real app footage for every functional claim. Higgsfield inserts are for mood only.
-4. [ ] **Push to GitHub.**
-   - Remote: `https://github.com/Bmartin2000/Gooutdoors.git`. It was created 2026-10-11, inside the window.
-   - Nothing has been pushed yet. Run `git push -u origin main` yourself.
-   - Optional: rename the repo to `afk-exe`.
-5. [ ] **Check the repo:** no `.env`, no personal photos, no model weights. Check with `git ls-files`.
-6. [ ] **Fill in `docs/DEV_SUBMISSION.md`:** the video URL, the repo URL, and your field-test sentence (optional).
-   - Delete or keep the commented "My Agent Session" section. AFK.exe was built with Claude Code. AI use is allowed by the rules, and the agent session is optional.
-   - Leave Prize Categories out: no partner technology is used.
-7. [ ] **Publish on DEV** before 08:59 Budapest on Oct 12.
-   - Use the official template (already followed) with the tags `devchallenge, hf26challenge`.
-   - Set `published: true` only when you're ready.
-8. [ ] **After the deadline:** any further commits must be listed in the README.
+1. [ ] **Real walk (about 15 minutes, strongly recommended).** Run `npm run start:lan`, scan the QR code from Outside, accept the certificate once, then walk 10+ minutes and 150+ m. Take the mission photo when the phone buzzes, come back, tap **Send to my desk**, and verify the photo on the desk. Note what happened, honestly, in a sentence or two for the post.
+2. [ ] **Screenshots** into `docs/media/` (`desk.png`, `walk.png`, `room.png`), then reference them in the README.
+3. [ ] **Recording** following `docs/DEMO_SCRIPT.md`. Every functional claim needs real footage.
+4. [ ] **Push.** Run `git push -u origin main` yourself. The remote is `github.com/Bmartin2000/Gooutdoors`, created 2026-10-11. Nothing has been pushed by the agent.
+5. [ ] **Check the repo:** `git ls-files`. Make sure there's no `.env`, no photos and no model weights.
+6. [ ] **Fill in `docs/DEV_SUBMISSION.md`:** the video URL and repo URL. Optionally add an agent-session link. Leave Prize Categories out.
+7. [ ] **Publish on DEV** before **08:59 Budapest, Oct 12**, with the tags `devchallenge, hf26challenge`.
+8. [ ] **After the deadline:** list any later commits in the README.

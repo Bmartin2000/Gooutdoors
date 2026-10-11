@@ -680,7 +680,7 @@ function CameraRig({ view, angle, reduced, onScreenRect, onSettled, onBotPoint }
   const botHead = useMemo(() => new THREE.Vector3(), [])
   const lastBot = useRef('')
 
-  useFrame(({ pointer }) => {
+  useFrame(({ pointer }, dt) => {
     const cam = camera as THREE.PerspectiveCamera
     const goal = VIEWS[view]
     let pos = goal.pos
@@ -700,7 +700,7 @@ function CameraRig({ view, angle, reduced, onScreenRect, onSettled, onBotPoint }
       if (!reduced) roomPos.add(sway.set(pointer.x * 0.4, pointer.y * 0.2, 0))
       pos = roomPos
     }
-    const k = reduced ? 1 : 0.08
+    const k = reduced ? 1 : 1 - Math.exp(-5 * dt)
     cam.position.lerp(pos, k)
     target.current.lerp(goal.target, k)
     cam.fov += (goal.fov - cam.fov) * k

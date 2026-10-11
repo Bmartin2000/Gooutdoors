@@ -2,6 +2,8 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { useGame } from '../app/GameContext.tsx'
 import { usePreferences } from '../app/usePreferences.ts'
 import type { OfficeView, ScreenRect, Stage } from '../scene/OfficeScene.tsx'
+import { loginConfigured } from '../app/auth.ts'
+import LoginScreen from './LoginScreen.tsx'
 import MossBubble from './MossBubble.tsx'
 import OS from './OS.tsx'
 
@@ -45,7 +47,8 @@ export function natureStage(upgrades: string[]): Stage {
 }
 
 export default function DeskPage() {
-  const { profile, settings, moss } = useGame()
+  const { profile, settings, moss, session } = useGame()
+  const needsLogin = loginConfigured && !session
   const [botPoint, setBotPoint] = useState<{ x: number; y: number } | null>(null)
   const { reducedMotion } = usePreferences(settings)
   const [webgl, setWebgl] = useState(hasWebGL)
@@ -94,7 +97,9 @@ export default function DeskPage() {
         </div>
       )}
 
-      {showOS && (
+      {needsLogin && <LoginScreen />}
+
+      {showOS && !needsLogin && (
         <OS
           mode={mounted ? 'monitor' : 'full'}
           style={mounted && rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : undefined}
@@ -102,7 +107,7 @@ export default function DeskPage() {
         />
       )}
 
-      {view === 'desk' && <MossBubble anchor={mounted ? botPoint : null} />}
+      {view === 'desk' && !needsLogin && <MossBubble anchor={mounted ? botPoint : null} />}
 
       {view === 'room' && (
         <div className="room-hud">

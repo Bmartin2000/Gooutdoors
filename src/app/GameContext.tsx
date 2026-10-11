@@ -10,7 +10,9 @@ import { levelForXp, TOOLS } from '../game/levels.ts'
 import type { AppSettings, MissionEvidence, PlayerProfile, UpgradeId } from '../game/types.ts'
 import * as store from '../storage/gamePersistence.ts'
 import { buildBackup, downloadJson, ImportError, parseBackup, parseOuting, photoToEvidence, readJsonFile, type OutingBundle } from '../storage/transfer.ts'
+import * as admin from '../game/admin.ts'
 import { useAIStatus } from './AIStatusContext.tsx'
+import * as auth from './auth.ts'
 import { playChime, showSystemNotification } from './notify.ts'
 
 export interface Toast {
@@ -19,7 +21,7 @@ export interface Toast {
   text: string
 }
 
-export type OSApp = 'inbox' | 'work' | 'skills' | 'shop' | 'outside' | 'tools'
+export type OSApp = 'inbox' | 'work' | 'skills' | 'shop' | 'outside' | 'tools' | 'admin'
 
 export interface MossLine {
   id: number
@@ -64,6 +66,19 @@ interface GameValue {
   exportBackup: () => Promise<void>
   resetAll: () => Promise<void>
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>
+  session: auth.Session | null
+  signIn: (user: string, password: string) => Promise<boolean>
+  continueAsGuest: () => void
+  signOut: () => void
+  adminActions: {
+    walk: () => Promise<void>
+    approvePhoto: (evidenceId: string) => Promise<void>
+    approveAllPhotos: () => Promise<void>
+    finishJob: () => Promise<void>
+    refill: () => Promise<void>
+    levelUp: () => Promise<void>
+    grant: (tokens: number, money: number) => Promise<void>
+  }
 }
 
 const GameContext = createContext<GameValue | null>(null)
@@ -86,6 +101,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [celebration, setCelebration] = useState<Celebration | null>(null)
   const [app, setApp] = useState<OSApp>('inbox')
   const [moss, setMoss] = useState<MossLine | null>(null)
+  const [session, setSession] = useState<auth.Session | null>(() => auth.loadSession())
   const mossSeq = useRef(0)
   const mossTimer = useRef<number | undefined>(undefined)
   const say = useCallback((text: string, mood: MossLine['mood'], cta?: MossLine['cta'], ms = 12_000) => {
@@ -433,6 +449,62 @@ export function GameProvider({ children }: { children: ReactNode }) {
     await store.saveSettings(next)
   }, [])
 
+  const isAdmin = !!session?.admin
+  const adminActions = useMemo<GameValue['adminActions']>(() => {
+    const guard = <A extends unknown[]>(fn: (...a: A) => Promise<void>) => async (...a: A) => {
+      if (!isAdmin) return
+      await fn(...a)
+    }
+    const approve = async (id: string) => {
+      const item = await store.getEvidence(id)
+      if (!item || item.status === 'verified') return
+      await mutate((p, keys) => eco.applyPhoto(p, keys, item), {
+        id,
+        patch: { status: 'verified', result: admin.ADMIN_PHOTO_RESULT, model: 'admin-override', verifiedAt: new Date().toISOString() },
+      })
+    }
+    return {
+      walk: guard(async () => {
+        const res = await mutate((p, keys) => admin.adminWalk(p, keys))
+        if (res.ledger) notify('success', `Admin: walk skipped. +${res.ledger.tokens} 🌿 +${res.ledger.xp} XP, energy full.`)
+      }),
+      approvePhoto: guard(async (id: string) => {
+        await approve(id)
+        await refreshEvidence()
+        notify('success', 'Admin: photo approved without AI check.')
+      }),
+      approveAllPhotos: guard(async () => {
+        const pending = (await store.listEvidence()).filter((e) => e.status !== 'verified' && e.status !== 'verifying')
+        for (const e of pending) await approve(e.id)
+        await refreshEvidence()
+        notify('success', `Admin: ${pending.length} photo(s) approved without AI check.`)
+      }),
+      finishJob: guard(async () => {
+        const res = await mutate<eco.SubmitOutcome | null>((p) => {
+          const out = admin.adminFinishJob(p)
+          return out ? { profile: out.profile, ledger: out.ledger, extra: out } : { profile: p, ledger: null, extra: null }
+        })
+        if (res.extra) notify('success', `Admin: job completed. +${res.ledger?.money ?? 0}`)
+        else notify('info', 'No active job to complete.')
+      }),
+      refill: guard(async () => void (await mutate((p) => ({ profile: admin.adminRefill(p), ledger: null })))),
+      levelUp: guard(async () => void (await mutate((p) => ({ profile: admin.adminLevelUp(p), ledger: null })))),
+      grant: guard(async (tokens: number, money: number) => void (await mutate((p) => ({ profile: admin.adminGrant(p, tokens, money), ledger: null })))),
+    }
+  }, [isAdmin, mutate, notify, refreshEvidence])
+
+  const signIn = useCallback(async (user: string, password: string) => {
+    const s = await auth.signIn(user, password)
+    if (s) setSession(s)
+    return !!s
+  }, [])
+  const continueAsGuest = useCallback(() => setSession(auth.guestSession()), [])
+  const signOut = useCallback(() => {
+    auth.signOut()
+    setSession(null)
+    setApp('inbox')
+  }, [])
+
   const value = useMemo<GameValue>(
     () => ({
       ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app,
@@ -441,8 +513,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       dismissToast,
       dismissCelebration: () => setCelebration(null),
       accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings,
+      session, signIn, continueAsGuest, signOut, adminActions,
     }),
-    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings],
+    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings, session, signIn, continueAsGuest, signOut, adminActions],
   )
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

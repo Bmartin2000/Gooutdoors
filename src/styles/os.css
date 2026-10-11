@@ -1148,3 +1148,100 @@
   color: var(--gold);
   margin-bottom: 2px;
 }
+
+/* ───────────── sign-in + admin ───────────── */
+.login {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(5 6 5 / 0.45);
+  backdrop-filter: blur(10px);
+}
+.login__card {
+  display: grid;
+  gap: 14px;
+  width: min(360px, 100%);
+  padding: 26px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-3);
+  animation: pop var(--dur-slow) var(--ease-spring);
+}
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.login__name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.os-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--os-text-2);
+}
+.os-user__admin {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.admin {
+  display: grid;
+  gap: 12px;
+}
+.admin__warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.admin__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.admin__action {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--os-line);
+  background: var(--os-surface);
+  color: var(--os-text);
+  text-align: left;
+  transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+}
+.admin__action svg {
+  color: var(--gold);
+}
+.admin__action:hover:not(:disabled) {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+.admin__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--os-surface);
+  border: 1px solid var(--os-line);
+}

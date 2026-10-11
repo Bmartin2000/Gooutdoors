@@ -79,6 +79,23 @@ npm run start:lan
 
 Open the desk on that computer at https://127.0.0.1:4173. Accept the warning once, then open **Outside** and scan the QR code with your phone.
 
+### Optional local admin (testing only)
+
+```bash
+AFK_ADMIN_PASSWORD='your-password' node scripts/set-admin.mjs your-username
+```
+
+- This writes a **salted hash** (never the password) to the git-ignored `.env.local`. Restart `npm run dev` afterwards.
+- The desk then shows a sign-in screen. A guest can still continue without signing in.
+- Signed in as admin, the OS gets an **Admin** app that can:
+  - skip a walk
+  - approve waiting photos without the AI check
+  - complete the active job
+  - refill energy, level up, or add tokens and money
+- **Every override is logged as "Admin override"** in the activity feed.
+- The public phone-app build compiles admin out entirely.
+- This is a local convenience gate, not security.
+
 ## Local AI: what it does and doesn't do
 
 | Feature | Local model call | Guard rails |

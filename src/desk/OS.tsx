@@ -1,4 +1,4 @@
-import { Briefcase, Code2, Eye, Inbox, Leaf, Settings2, ShoppingBag, Sparkles, Wrench, X, Zap } from 'lucide-react'
+import { Briefcase, Code2, Eye, Inbox, Leaf, LogOut, Settings2, ShieldCheck, ShoppingBag, Sparkles, Wrench, X, Zap } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useAIStatus } from '../app/AIStatusContext.tsx'
 import { useGame, type OSApp } from '../app/GameContext.tsx'
@@ -6,6 +6,7 @@ import { BrandMark } from '../components/Brand.tsx'
 import ErrorBoundary from '../components/ErrorBoundary.tsx'
 import SettingsPanel from '../components/SettingsPanel.tsx'
 import { levelProgress } from '../game/levels.ts'
+import AdminApp from './apps/AdminApp.tsx'
 import InboxApp from './apps/InboxApp.tsx'
 import OutsideApp from './apps/OutsideApp.tsx'
 import ShopApp from './apps/ShopApp.tsx'
@@ -89,14 +90,16 @@ function Toasts() {
 }
 
 export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'full'; style?: CSSProperties; onLookAround?: () => void }) {
-  const { profile, app, openApp } = useGame()
+  const { profile, app, openApp, session, signOut } = useGame()
+  const isAdmin = !!session?.admin
+  const dock = isAdmin ? [...DOCK, { id: 'admin' as OSApp, label: 'Admin', icon: ShieldCheck }] : DOCK
   const { diagnostics } = useAIStatus()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { current, next, ratio } = levelProgress(profile.xp)
   const lowEnergy = profile.energy < 30
 
   const content =
-    app === 'inbox' ? <InboxApp /> : app === 'work' ? <WorkApp /> : app === 'skills' ? <SkillsApp /> : app === 'shop' ? <ShopApp onLookAround={onLookAround} /> : app === 'outside' ? <OutsideApp /> : <ToolsApp />
+    app === 'admin' && isAdmin ? <AdminApp /> : app === 'inbox' ? <InboxApp /> : app === 'work' ? <WorkApp /> : app === 'skills' ? <SkillsApp /> : app === 'shop' ? <ShopApp onLookAround={onLookAround} /> : app === 'outside' ? <OutsideApp /> : <ToolsApp />
 
   return (
     <div className={`os os--${mode}`} style={style}>
@@ -138,10 +141,21 @@ export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'f
             <span className="ai-dot" aria-hidden />
             <span className="os-bar__ai">{diagnostics.connection === 'ready' ? 'Local AI' : 'AI offline'}</span>
           </span>
+          {session && session.user !== 'guest' && (
+            <span className="os-user" title={`Signed in as ${session.user}`}>
+              {isAdmin && <i className="os-user__admin">ADMIN</i>}
+              {session.user}
+            </span>
+          )}
           <Clock />
           {onLookAround && (
             <button type="button" className="os-icon" onClick={onLookAround} aria-label="Look around the office" title="Look around the office">
               <Eye size={15} />
+            </button>
+          )}
+          {session && session.user !== 'guest' && (
+            <button type="button" className="os-icon" onClick={signOut} aria-label="Sign out" title="Sign out">
+              <LogOut size={15} />
             </button>
           )}
           <button type="button" className="os-icon" onClick={() => setSettingsOpen(true)} aria-label="Settings" title="Settings">
@@ -152,7 +166,7 @@ export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'f
 
       <div className="os-body">
         <nav className="os-dock" aria-label="Apps">
-          {DOCK.map(({ id, label, icon: Icon }) => {
+          {dock.map(({ id, label, icon: Icon }) => {
             const badge = id === 'inbox' ? profile.board.length : id === 'work' && profile.activeJob ? '•' : id === 'outside' && lowEnergy ? '!' : null
             return (
               <button key={id} type="button" className={`os-dock__item ${app === id ? 'is-active' : ''}`} onClick={() => openApp(id)} aria-current={app === id ? 'page' : undefined}>

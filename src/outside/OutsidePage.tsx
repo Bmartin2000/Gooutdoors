@@ -1,6 +1,6 @@
-import { Camera, Check, ChevronDown, Download, ImagePlus, Leaf, MapPin, Moon, Send, ShieldAlert, Square, X } from 'lucide-react'
+import { ArrowLeft, Camera, Check, ChevronDown, Download, ImagePlus, Leaf, MapPin, Moon, Send, ShieldAlert, Square, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { prepareForStorage } from '../ai/image.ts'
 import { useGame } from '../app/GameContext.tsx'
 import { BrandMark } from '../components/Brand.tsx'
@@ -34,7 +34,8 @@ function Ring({ ratio, children }: { ratio: number; children: React.ReactNode })
 }
 
 export default function OutsidePage() {
-  const { notify, session, signOut } = useGame()
+  const { notify, session, signOut, isAIHost, deliverOuting } = useGame()
+  const navigate = useNavigate()
   const isAdmin = !!session?.admin
   const [showLogin, setShowLogin] = useState(false)
   const [params, setParams] = useSearchParams()
@@ -100,6 +101,14 @@ export default function OutsidePage() {
 
   const send = async (walk: WalkRecord) => {
     const bundle = await buildOuting(walk.summary, walkPhotos(walk))
+    // On the desk computer itself: credit it right away and go back to the monitor.
+    if (isAIHost) {
+      await deliverOuting(bundle)
+      await w.markSent(walk.id)
+      w.closeSummary()
+      navigate('/')
+      return
+    }
     if (!pairing?.token) {
       notify('warn', 'Not paired with a desk. Export the file instead, or scan the QR code on your computer.')
       return
@@ -111,12 +120,19 @@ export default function OutsidePage() {
       if (res.status === 413) throw new Error('Too much to send at once. Export the file instead.')
       if (!res.ok) throw new Error('Your desk did not accept the outing.')
       await w.markSent(walk.id)
-      notify('success', 'Sent! Your desk credits the walk and checks the photos.')
+      w.closeSummary()
+      notify('success', 'Sent! Your rewards are waiting on your desk. Ready for the next walk.')
     } catch (e) {
       notify('error', e instanceof Error && e.message !== 'Failed to fetch' ? e.message : 'Can’t reach your desk. Are you back on the same Wi-Fi, with AFK.exe running?')
     } finally {
       setSending(false)
     }
+  }
+
+  /** After a walk: deliver automatically when possible, otherwise show the summary with Share. */
+  const afterWalk = async (walk: WalkRecord | undefined) => {
+    if (!walk) return
+    if (isAIHost || (pairing?.token && navigator.onLine)) await send(walk)
   }
 
   const exportFile = async (walk: WalkRecord) => {
@@ -205,6 +221,11 @@ export default function OutsidePage() {
   return (
     <div className="outside">
       <header className="outside__top">
+        {isAIHost && (
+          <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back to the desk" title="Back to the desk">
+            <ArrowLeft size={20} />
+          </button>
+        )}
         <BrandMark size={26} />
         <span className="outside__brand">
           AFK<span className="wordmark__ext">.exe</span> <span className="muted">Outside</span>
@@ -270,7 +291,7 @@ export default function OutsidePage() {
           {isAdmin && (
             <div className="admin-bar">
               <span className="admin-bar__title">Admin override</span>
-              <button type="button" className="btn btn--block" onClick={() => void w.skipAsAdmin()}>
+              <button type="button" className="btn btn--block" onClick={async () => void (await afterWalk(await w.skipAsAdmin()))}>
                 Skip walk — count it as done
               </button>
               {!w.missionDue && (
@@ -284,7 +305,7 @@ export default function OutsidePage() {
           <button type="button" className="btn btn--xl btn--block" onClick={() => void togglePocket(true)}>
             <Moon size={18} aria-hidden /> Pocket mode
           </button>
-          <button type="button" className="btn btn--block btn--ghost" onClick={() => void w.end()}>
+          <button type="button" className="btn btn--block btn--ghost" onClick={async () => void (await afterWalk(await w.end()))}>
             <Square size={14} aria-hidden /> End walk
           </button>
         </section>
@@ -313,7 +334,7 @@ export default function OutsidePage() {
             </div>
           </dl>
           {!w.walk.summary.verified && isAdmin && (
-            <button type="button" className="btn btn--block" onClick={() => void w.skipAsAdmin()}>
+            <button type="button" className="btn btn--block" onClick={async () => void (await afterWalk(await w.skipAsAdmin()))}>
               Count it anyway (admin override)
             </button>
           )}
@@ -322,7 +343,11 @@ export default function OutsidePage() {
               Needs {w.rules.minMinutes} min and {w.rules.minDistanceM} m with a working GPS fix. Photos still count once your desk checks them.
             </p>
           )}
-          {pairing?.token ? (
+          {isAIHost ? (
+            <button type="button" className="btn btn--primary btn--xl btn--block" onClick={() => void send(w.walk!)}>
+              <Send size={18} aria-hidden /> Back to my desk
+            </button>
+          ) : pairing?.token ? (
             <>
               <p className="muted small">{w.walk.sentAt ? 'Sent to your desk.' : 'Back on Wi-Fi? Send it to your desk to collect your rewards there.'}</p>
               <button type="button" className="btn btn--primary btn--xl btn--block" disabled={sending} onClick={() => void send(w.walk!)}>
@@ -360,7 +385,7 @@ export default function OutsidePage() {
                   {h.summary?.verified ? ' ✓' : ''}
                 </span>
                 <span className="row-2">
-                  {pairing?.token && (
+                  {(pairing?.token || isAIHost) && (
                     <button type="button" className="btn btn--sm btn--primary" onClick={() => void send(h)} aria-label="Send to desk">
                       <Send size={13} />
                     </button>

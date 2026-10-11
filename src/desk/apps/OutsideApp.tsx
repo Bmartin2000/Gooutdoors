@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleAlert, CircleHelp, Loader2, MapPin, RotateCcw, ShieldCheck, Smartphone, Trash2, Upload, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAIStatus } from '../../app/AIStatusContext.tsx'
 import { useGame } from '../../app/GameContext.tsx'
 import { OllamaSetupHelp } from '../../components/SettingsPanel.tsx'
@@ -173,6 +174,7 @@ export default function OutsideApp() {
   const { evidence, settings, importFile, profile } = useGame()
   const { diagnostics } = useAIStatus()
   const file = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
   const rules = settings.demoWalk ? WALK_RULES.demo : WALK_RULES.normal
   const pending = evidence.filter((e) => e.status !== 'verified')
   const done = evidence.filter((e) => e.status === 'verified')
@@ -184,6 +186,9 @@ export default function OutsideApp() {
           <h2 id="outside-title">Go outside</h2>
           <p className="muted small">The best upgrade isn’t on this screen.</p>
         </header>
+        <button type="button" className="btn btn--primary" onClick={() => navigate('/outside')}>
+          Start a walk on this device
+        </button>
         <ol className="how">
           <li>
             <strong>Start a walk on your phone</strong> and pocket it. GPS works without signal.

@@ -66,6 +66,8 @@ interface GameValue {
   exportBackup: () => Promise<void>
   resetAll: () => Promise<void>
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>
+  /** Same-device hand-off: credit an outing recorded on this computer and show the result at the desk. */
+  deliverOuting: (bundle: OutingBundle) => Promise<void>
   session: auth.Session | null
   signIn: (user: string, password: string) => Promise<auth.SignInError | null>
   continueAsGuest: () => void
@@ -462,6 +464,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     await store.saveSettings(next)
   }, [])
 
+  const deliverOuting = useCallback(
+    async (bundle: OutingBundle) => {
+      await receiveOuting(parseOuting(bundle))
+      setApp(bundle.photos.some((p) => !p.adminApproved) ? 'outside' : 'inbox')
+    },
+    [receiveOuting],
+  )
+
   const isAdmin = !!session?.admin
   const adminActions = useMemo<GameValue['adminActions']>(() => {
     const guard = <A extends unknown[]>(fn: (...a: A) => Promise<void>) => async (...a: A) => {
@@ -527,9 +537,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       dismissToast,
       dismissCelebration: () => setCelebration(null),
       accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings,
-      session, signIn, continueAsGuest, signOut, adminActions,
+      deliverOuting, session, signIn, continueAsGuest, signOut, adminActions,
     }),
-    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings, session, signIn, continueAsGuest, signOut, adminActions],
+    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings, deliverOuting, session, signIn, continueAsGuest, signOut, adminActions],
   )
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

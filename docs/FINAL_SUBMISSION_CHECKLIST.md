@@ -21,7 +21,6 @@
 | Real vibration and wake lock on a physical Android phone; iOS behaviour | **NOT TESTED** |
 | Desktop system notification for a new job | **NOT TESTED**. Implemented; needs a manual check with permission granted and the tab in the background. |
 | Screen reader pass | **NOT TESTED** |
-
 | Phone app deployed to GitHub Pages: CI ran a clean install, all 68 tests and the build; the live site has a secure context, GPS, Wake Lock and an active service worker with an offline cache | PASS (https://bmartin2000.github.io/Gooutdoors/outside) |
 | Moss announcements (greeting, new job, today's contract) and the featured offer | PASS (browser) |
 

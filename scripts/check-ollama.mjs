@@ -1,5 +1,5 @@
-// Ellenőrzi, hogy fut-e a helyi Ollama és le van-e töltve a projekt modellje.
-// Használat: npm run ollama:check
+// Checks that the local Ollama server is running and the project's model is installed.
+// Usage: npm run ollama:check
 import { readFileSync, existsSync } from 'node:fs'
 
 function readEnv() {
@@ -20,16 +20,16 @@ const model = env.VITE_OLLAMA_MODEL || 'qwen3.5:4b'
 
 try {
   const { version } = await (await fetch(`${host}/api/version`)).json()
-  console.log(`✔ Ollama fut: ${host} (v${version})`)
+  console.log(`✔ Ollama is running: ${host} (v${version})`)
 } catch {
-  console.error(`✖ Az Ollama nem érhető el itt: ${host}\n  Indítsd el: ollama serve`)
+  console.error(`✖ Ollama is not reachable at ${host}\n  Start it with: ollama serve`)
   process.exit(1)
 }
 
 const { models } = await (await fetch(`${host}/api/tags`)).json()
 const found = models.find((m) => m.name === model)
 if (!found) {
-  console.error(`✖ A(z) "${model}" modell nincs letöltve.\n  Töltsd le: ollama pull ${model}`)
+  console.error(`✖ Model "${model}" is not installed.\n  Install it with: ollama pull ${model}`)
   process.exit(1)
 }
-console.log(`✔ Modell elérhető: ${model} (${(found.size / 1e9).toFixed(1)} GB)`)
+console.log(`✔ Model available: ${model} (${(found.size / 1e9).toFixed(1)} GB)`)

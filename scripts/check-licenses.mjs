@@ -1,6 +1,6 @@
-// Licenc-audit: minden telepített npm csomagnak OSI által elfogadott,
-// megengedő nyílt forráskódú licenccel kell rendelkeznie.
-// Használat: npm run licenses:check
+// License audit: every installed npm package must carry an OSI-approved open-source
+// license (permissive code licenses, plus OFL-1.1 for the bundled fonts).
+// Usage: npm run licenses:check
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -19,9 +19,10 @@ const ALLOWED = new Set([
   'Zlib',
   'MPL-2.0',
   'CC-BY-4.0',
+  'OFL-1.1',
 ])
 
-// Ha a package.json nem adja meg, a LICENSE fájl fejlécéből próbáljuk felismerni.
+// When package.json has no license field, detect it from the LICENSE file header.
 const LICENSE_FILE_PATTERNS = [
   [/^\s*MIT License/i, 'MIT'],
   [/^\s*ISC License/i, 'ISC'],
@@ -43,7 +44,7 @@ function licenseOf(pkg, dir) {
   return licenseFromFile(dir)
 }
 
-// SPDX kifejezés: "OR" esetén elég egy engedélyezett, "AND" esetén mind kell.
+// SPDX expressions: "OR" needs one allowed license, "AND" needs all of them.
 function isAllowed(expr) {
   const clean = expr.replace(/[()]/g, '').trim()
   if (clean.includes(' OR ')) return clean.split(' OR ').some(isAllowed)
@@ -79,13 +80,13 @@ for (const [id, license] of seen) {
   if (!isAllowed(license)) violations.push(`${id}: ${license}`)
 }
 
-console.log(`${seen.size} csomag ellenőrizve.`)
+console.log(`${seen.size} packages checked.`)
 for (const [license, n] of Object.entries(counts).sort((a, b) => b[1] - a[1])) {
   console.log(`  ${license.padEnd(28)} ${n}`)
 }
 
 if (violations.length) {
-  console.error(`\n✖ Nem engedélyezett vagy ismeretlen licenc:\n  ${violations.join('\n  ')}`)
+  console.error(`\n✖ Disallowed or unknown license:\n  ${violations.join('\n  ')}`)
   process.exit(1)
 }
-console.log('\n✔ Minden függőség nyílt forráskódú, megengedő licenccel rendelkezik.')
+console.log('\n✔ Every dependency is under an approved open-source license.')

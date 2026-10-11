@@ -1,14 +1,24 @@
 <!doctype html>
-<html lang="hu">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="AFK.exe — Code. Explore. Upgrade. Solve a small coding contract, step outside for one photo, and unlock real dev tools powered by a local open-weight AI." />
+    <meta name="theme-color" content="#0d0e0d" />
+    <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Gooutdoors – nyílt forráskódú, ingyenes túratervező helyi AI-val (Ollama)." />
-    <title>Gooutdoors</title>
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>AFK.exe — Code. Explore. Upgrade.</title>
+    <style>
+      /* Paint the right background before CSS loads (no white flash). */
+      html { background: #0d0e0d; }
+      @media (prefers-color-scheme: light) { html { background: #f3f0e9; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>AFK.exe needs JavaScript to run.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

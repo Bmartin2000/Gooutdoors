@@ -26,3 +26,6 @@ dist-ssr
 # Helyi környezeti beállítások
 .env
 .env.local
+
+# Local-only test images (never commit)
+public/__devtest__/

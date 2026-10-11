@@ -2,12 +2,13 @@ import { Link } from 'react-router-dom'
 
 export default function NotFoundPage() {
   return (
-    <section className="page">
-      <h1>Letértél az ösvényről</h1>
-      <p>Ez az oldal nem létezik.</p>
-      <Link to="/" className="button">
-        Vissza a kezdőpontra
+    <div className="page page--narrow stack-4">
+      <p className="eyebrow">404</p>
+      <h1 className="h1">You wandered off the trail.</h1>
+      <p className="muted">This page doesn’t exist.</p>
+      <Link to="/" className="btn btn--primary">
+        Back to your workspace
       </Link>
-    </section>
+    </div>
   )
 }

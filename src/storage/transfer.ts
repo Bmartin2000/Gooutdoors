@@ -4,7 +4,7 @@
  * Walk data is derived numbers only — never coordinates. Every import is schema-validated.
  */
 import { z } from 'zod'
-import { CHALLENGES } from '../content/challenges.ts'
+import { getChallenge } from '../content/challenges.ts'
 import { getMission } from '../content/missions.ts'
 import type { LedgerEntry, MissionEvidence, PlayerProfile, WalkSummary } from '../game/types.ts'
 import { base64ToBlob, blobToBase64 } from '../ai/image.ts'
@@ -127,7 +127,7 @@ const BackupSchema = z.object({
       energy: z.number().min(0).max(100),
       skills,
       skillPoints: skills,
-      board: z.array(z.object({ id: z.string(), challengeId: z.string().refine((id) => CHALLENGES.some((c) => c.id === id)) }).passthrough()).max(10),
+      board: z.array(z.object({ id: z.string(), challengeId: z.string().refine((id) => !!getChallenge(id)) }).passthrough()).max(10),
       upgrades: z.array(z.string()).max(30),
     })
     .passthrough(),

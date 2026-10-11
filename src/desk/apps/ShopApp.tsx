@@ -38,6 +38,7 @@ export default function ShopApp({ onLookAround }: { onLookAround?: () => void })
                 <article key={item.id} className={`shop-item ${owned ? 'is-owned' : ''}`}>
                   <h3>{item.name}</h3>
                   <p className="muted small">{item.blurb}</p>
+                  <p className="shop-item__perk">✦ {item.perkText}</p>
                   <div className="row-between">
                     <span className="shop-item__price">{price}</span>
                     {owned ? (

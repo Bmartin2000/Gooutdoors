@@ -267,3 +267,8 @@
   color: var(--gold);
   border-color: transparent;
 }
+.walk-reward-preview { padding: 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--accent-soft); text-align: left; display: grid; gap: 8px; font-size: 14px; }
+.walk-reward-preview strong { color: var(--accent); }
+.walk-reward-preview ol { padding-left: 20px; display: grid; gap: 6px; }
+.outside__leaf .moss-face { width: 60px; height: 60px; animation: friend-bob 3s ease-in-out infinite; }
+@media (max-width: 600px) { .outside button { min-height: 44px; } }

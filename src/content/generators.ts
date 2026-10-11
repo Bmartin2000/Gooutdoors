@@ -68,6 +68,47 @@ interface Template {
 
 const TEMPLATES: Template[] = [
   {
+    id: 'batch',
+    difficulty: 2,
+    trains: ['async', 'typescript'],
+    build: (rng, app) => {
+      const ids = Array.from({ length: int(rng, 2, 5) }, () => int(rng, 1, 99))
+      const evaluate = async (mode: string): Promise<CaseResult[]> => {
+        const cases = [ids, [], [7]]
+        return Promise.all(cases.map(async (input) => {
+          const load = async (id: number) => { await Promise.resolve(); return `item-${id}` }
+          let actual: unknown
+          if (mode === 'all') actual = await Promise.all(input.map(load))
+          else if (mode === 'map') actual = input.map(load).map((p) => p instanceof Promise ? 'Promise' : p)
+          else if (mode === 'first') actual = input.length ? [await load(input[0])] : []
+          else {
+            const results: string[] = []
+            input.forEach(async (id) => { results.push(await load(id)) })
+            actual = [...results]
+          }
+          const expected = input.map((id) => `item-${id}`)
+          return { label: `loadBatch([${input.join(', ')}])`, expected: show(expected), actual: show(actual), pass: show(actual) === show(expected) }
+        }))
+      }
+      return {
+        title: `${app.name}: the batch arrives empty`,
+        brief: `${app.name}'s ${app.what} loads every item asynchronously. The UI gets an empty batch even though the requests succeed. Return all loaded items in input order.`,
+        fileName: 'loadBatch.ts',
+        code: 'async function loadBatch(ids: number[]) {\n  const results: string[] = []\n  ids.forEach(async (id) => {\n    results.push(await load(id))\n  })\n  return results\n}',
+        focusLines: [3, 4, 6],
+        question: 'Which implementation waits for every request?',
+        choices: [
+          { id: 'a', label: 'Wait for the batch', code: 'return await Promise.all(ids.map(load))', evaluate: () => evaluate('all'), feedback: 'Promise.all waits for every result and preserves input order.' },
+          { id: 'b', label: 'Return the mapped array', code: 'return ids.map(load)', evaluate: () => evaluate('map'), feedback: 'These are promises, not loaded values.' },
+          { id: 'c', label: 'Wait for forEach', code: 'await ids.forEach(async id => results.push(await load(id)))\nreturn results', evaluate: () => evaluate('foreach'), feedback: 'forEach returns undefined. Awaiting it does not wait for its callbacks.' },
+          { id: 'd', label: 'Load the first item', code: 'return ids.length ? [await load(ids[0])] : []', evaluate: () => evaluate('first'), feedback: 'This drops every item after the first.' },
+        ],
+        correctChoiceId: 'a',
+        lesson: 'For concurrent async work, map to promises and await Promise.all. Use a for…of loop when requests must run one at a time.',
+      }
+    },
+  },
+  {
     id: 'clamp',
     difficulty: 1,
     trains: ['debugging'],
@@ -277,7 +318,7 @@ export function generateChallenge(id: string): Challenge | undefined {
   const [, templateId, seed, tierRaw] = id.split(':')
   const template = TEMPLATES.find((t) => t.id === templateId)
   if (!template || !seed) return undefined
-  const tier = Math.min(3, Math.max(1, Number(tierRaw) || 1))
+  const tier = Math.min(10, Math.max(1, Math.floor(Number(tierRaw) || 1)))
   const rng = seededRng(`${templateId}:${seed}`)
   const app = pick(rng, APPS)
   const body = template.build(rng, app)

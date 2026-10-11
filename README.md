@@ -2,7 +2,7 @@
 
 **Code. Explore. Upgrade.** · *Your workspace grows when you step away.*
 
-You sit at a desk in a small 3D office, and the whole game runs on the computer in front of you. Client jobs arrive in your inbox every hour. You take the ones you're qualified for, ship the fix and get paid. Every job uses up energy, and the only way to fill it back up is to **go outside**. Your phone measures the walk with GPS, offline, and buzzes when a photo mission appears. When you get back, an **open-weight AI running on your own computer** (Qwen3.5 4B through Ollama) checks the photo. Fresh air buys the plants that make your office come alive.
+You sit at a desk in a small 3D office, and the whole game runs on the computer in front of you. Playable contracts refill immediately; extra offers arrive every two minutes by default. You take the ones you're qualified for, ship the fix and get paid. Every job uses up energy, and the only way to fill it back up is to **go outside**. Your phone measures the walk with GPS, offline, and buzzes when a photo mission appears. When you get back, an **open-weight AI running on your own computer** (Qwen3.5 4B through Ollama) checks the photo. Fresh air buys the plants that make your office come alive.
 
 > Built for the **Hacktoberfest 2026 Open-Source AI Challenge: Week 1, "Touch Grass."**
 > No account. No cloud. No API key. Photos, code and location never leave your devices.
@@ -15,17 +15,23 @@ You sit at a desk in a small 3D office, and the whole game runs on the computer 
 
 ## How it plays
 
+The inbox starts with a visible roadmap: finish contracts for money, XP and skill points; walk for energy and fresh-air tokens; spend both currencies to grow a living office. Mobile uses a bottom app bar and larger touch targets. Moss has an animated face and the walk screen explains the steps and rewards before you start.
+
+**Long-term progression:** ten career titles lead into unlimited mastery levels with increasing XP requirements and pay bonuses. Each of the five skills has ten ranks. In Skills, one practice point costs $20 + $15 per current rank, 1 fresh-air token and 5 energy; jobs still train skills for free. Generated contracts scale up to career tier 10, with higher skill requirements and larger rewards. The puzzles come from seeded templates rather than an AI-generated curriculum.
+
+**Office perks:** every shop card states its effect. Gear boosts pay or XP and saves energy; plants increase passive recovery, walk tokens or XP. Terrariums, bonsai, bookshelves and string lights extend the shop across the career. Purchases trigger a room reveal, growing objects and a gradual change from cool walls to warm green daylight. Reduced-motion preferences are respected. Existing version-2 saves keep their progress and chosen arrival schedule.
+
 **At the desk** (your computer, which runs Ollama)
 
-- **Inbox.** A new client offer arrives every hour, and **Moss** (your robot with a plant growing from its head) turns to you and tells you about it. Half the offers are **freshly generated** (new app, story, names and test data each time), and one **Today's contract** each day pays 1.5×. You can set it to every 20 minutes, or every 2 minutes for a demo. You get an in-game chime, plus a desktop notification if the tab is in the background.
+- **Inbox.** At least three qualified contracts stay available, and bonus offers arrive every two minutes by default, and **Moss** (your robot with a plant growing from its head) turns to you and tells you about it. Half the offers are **freshly generated** (new app, story, names and test data each time), and one **Today's contract** each day pays 1.5×. Bonus offers can also be set to every 20 or 60 minutes; playable work still refills immediately. You get an in-game chime, plus a desktop notification if the tab is in the background.
 - **Requirements.** Each job needs certain skills and a level, for example *Debugging 2*, *TypeScript 1* or *Level 2*. Jobs you can't take yet stay visible, show what's missing, and tell you which skill to train. You take other jobs you're qualified for in the meantime.
-- **Work.** A real, short coding task: an off-by-one error, a type guard that lies, `async` inside `forEach`, a quadratic duplicate check, a flaky float assertion and more (10 tasks across 5 skills).
+- **Work.** A real, short coding task: an off-by-one error, a type guard that lies, `async` inside `forEach`, a quadratic duplicate check, a flaky float assertion and more (10 authored tasks plus seven seeded generators across 5 skills).
   - You get **two submissions**. Every option is run against authored test cases and you see the real outputs.
   - You can spend **one 🌿 token on a hint**, which removes a wrong option.
 - **Pay.** Each job gives money, XP and skill points. Money buys gear for the office: a lamp, coffee, headphones, a poster, a second monitor.
 - **Energy.** Every job costs 25–45 energy. Energy refills slowly at the desk (+8 per hour) and **fully with one verified walk**.
-- **Tools.** Levels unlock real AI tools that run on the local model: AI Debugger (level 2), Code Optimizer (level 3), Test Generator (level 4). The Assistant is always available.
-- **Look around.** Click the eye icon to get up from the desk and see how your office has grown.
+- **Tools.** Levels unlock real AI tools that run on the local model: AI Debugger (level 2), Code Optimizer (level 4), Test Generator (level 6). The Assistant is always available.
+- **Look around.** Tap the eye icon on desktop or phone, then use Left / Center / Right to inspect the office. A purchase opens the room automatically so you can see its growth animation.
 
 **Outside** (your phone)
 

@@ -7,7 +7,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   motion: 'system',
   sound: true,
   notifications: false,
-  jobEveryMin: 60,
+  jobEveryMin: 2,
   demoWalk: false,
 }
 

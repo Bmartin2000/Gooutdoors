@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, Check, ChevronDown, Download, ImagePlus, Leaf, MapPin, Moon, Send, ShieldAlert, Square, X } from 'lucide-react'
+import { ArrowLeft, Camera, Check, ChevronDown, Download, ImagePlus, MapPin, Moon, Send, ShieldAlert, Square, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { prepareForStorage } from '../ai/image.ts'
@@ -7,6 +7,7 @@ import { BrandMark } from '../components/Brand.tsx'
 import Toasts from '../components/Toasts.tsx'
 import { loginConfigured } from '../app/auth.ts'
 import LoginScreen from '../desk/LoginScreen.tsx'
+import { MossFace } from '../desk/MossBubble.tsx'
 import { getMission, getVariant } from '../content/missions.ts'
 import type { MissionEvidence, PhonePairing, WalkRecord } from '../game/types.ts'
 import { deleteEvidence, listEvidence, loadPairing, putEvidence, savePairing } from '../storage/gamePersistence.ts'
@@ -251,13 +252,18 @@ export default function OutsidePage() {
       {!w.walk && (
         <section className="outside__hero">
           <div className="outside__leaf" aria-hidden>
-            <Leaf size={30} />
+            <MossFace />
           </div>
           <h1 className="outside__title">Take a walk.</h1>
           <p className="outside__lead">
             {w.rules.minMinutes}+ minutes, {w.rules.minDistanceM}+ metres from here. GPS checks it — no signal needed. Your phone buzzes when a photo mission appears.
           </p>
           {pairing?.demo && <p className="pill pill--warn">Demo thresholds (set on your desk)</p>}
+          <div className="walk-reward-preview">
+            <strong>Moss is cheering you on 🌱</strong>
+            <p>One verified walk → 100 energy, fresh-air tokens and career XP. At 10 minutes: 3 🌿 + 80 XP, before office bonuses.</p>
+            <ol><li>Start and allow GPS.</li><li>Walk away from your starting point. Use pocket mode to keep tracking.</li><li>Return and share the outing with your desk. Buy your next plant!</li></ol>
+          </div>
           <button type="button" className="btn btn--primary btn--xl btn--block" onClick={() => void w.start()}>
             Start walk
           </button>

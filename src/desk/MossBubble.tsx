@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useGame } from '../app/GameContext.tsx'
 
-function MossFace() {
+export function MossFace() {
   return (
     <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden className="moss-face">
       <path d="M20 9 v-4" stroke="#5f8f4f" strokeWidth="1.6" />
@@ -11,6 +11,9 @@ function MossFace() {
       <rect x="11" y="18" width="18" height="9" rx="4.5" fill="#141716" />
       <rect x="14.5" y="20.5" width="3" height="4" rx="1.5" className="moss-face__eye" />
       <rect x="22.5" y="20.5" width="3" height="4" rx="1.5" className="moss-face__eye" />
+      <circle cx="11" cy="28" r="2" fill="#e5a5a0" />
+      <circle cx="29" cy="28" r="2" fill="#e5a5a0" />
+      <path d="M17 30 Q20 33 23 30" stroke="#5f8f4f" strokeWidth="1.4" fill="none" />
     </svg>
   )
 }

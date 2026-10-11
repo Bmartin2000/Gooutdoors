@@ -1,7 +1,10 @@
 import { Clock3, Lock, Zap } from 'lucide-react'
 import { useGame } from '../../app/GameContext.tsx'
 import { getChallenge, skillName } from '../../content/challenges.ts'
-import { eligibility } from '../../game/economy.ts'
+import { eligibility, jobTerms } from '../../game/economy.ts'
+import { levelProgress } from '../../game/levels.ts'
+import { SHOP, PLANT_IDS } from '../../content/shop.ts'
+import { MossFace } from '../MossBubble.tsx'
 import type { FeedItem, JobOffer } from '../../game/types.ts'
 
 function timeLeft(iso: string) {
@@ -32,8 +35,9 @@ function OfferCard({ offer }: { offer: JobOffer }) {
   const challenge = getChallenge(offer.challengeId)
   if (!challenge) return null
   const elig = eligibility(profile, challenge)
+  const terms = jobTerms(profile, offer)
   const busy = !!profile.activeJob
-  const tired = profile.energy < offer.energyCost
+  const tired = profile.energy < terms.energyCost
   const reasons = [
     ...(elig.missingLevel ? [`Level ${elig.missingLevel}`] : []),
     ...elig.missingSkills.map((m) => `${skillName(m.skill)} ${m.need}`),
@@ -68,15 +72,15 @@ function OfferCard({ offer }: { offer: JobOffer }) {
         </div>
         {!elig.ok && (
           <p className="offer__lock">
-            <Lock size={12} aria-hidden /> Needs {reasons.join(' · ')}. Take jobs that train it, or level up outside.
+            <Lock size={12} aria-hidden /> Needs {reasons.join(' · ')}. Train in Skills or gain XP outside.
           </p>
         )}
       </div>
       <div className="offer__side">
-        <p className="offer__pay">${offer.pay}</p>
-        <p className="offer__meta">+{offer.xp} XP</p>
+        <p className="offer__pay">${terms.pay}</p>
+        <p className="offer__meta">+{terms.xp} XP</p>
         <p className={`offer__meta ${tired ? 'is-low' : ''}`}>
-          <Zap size={11} aria-hidden /> {offer.energyCost}
+          <Zap size={11} aria-hidden /> {terms.energyCost}
         </p>
         {elig.ok ? (
           tired ? (
@@ -89,8 +93,8 @@ function OfferCard({ offer }: { offer: JobOffer }) {
             </button>
           )
         ) : (
-          <button type="button" className="btn btn--sm" disabled>
-            Locked
+          <button type="button" className="btn btn--sm" onClick={() => openApp('skills')}>
+            Train skills
           </button>
         )}
         <button type="button" className="offer__decline" onClick={() => void decline(offer.id)}>
@@ -105,14 +109,28 @@ export default function InboxApp() {
   const { profile, settings, openApp } = useGame()
   const every = settings.jobEveryMin === 60 ? 'every hour' : `every ${settings.jobEveryMin} min`
   const nextIn = Math.max(0, Math.round((Date.parse(profile.lastArrivalAt) + settings.jobEveryMin * 60_000 - Date.now()) / 60_000))
+  const { current, next, ratio } = levelProgress(profile.xp)
+  const plants = profile.upgrades.filter((id) => PLANT_IDS.includes(id)).length
+  const goalItem = SHOP.find((i) => i.minLevel <= current.level && !profile.upgrades.includes(i.id))
 
   return (
+    <div className="inbox-home">
+      <section className="journey" aria-label="Your next goals">
+        <div className="journey__friend"><MossFace /><span>Grow with Moss</span></div>
+        <h2>From a little desk to a living forest.</h2>
+        <p className="muted">Solve jobs → earn money, XP and skills. Walk → refill energy and earn 🌿. Buy upgrades → grow your office and boost your rewards.</p>
+        <div className="journey__steps">
+          <button onClick={() => openApp(profile.activeJob ? 'work' : 'inbox')}><b>01 · Build your career</b><span>{current.name} · {next ? `${next.minXp - profile.xp} XP to ${next.name}` : 'Keep growing'}</span><div className="meter meter--xp"><span style={{ transform: `scaleX(${ratio})` }} /></div></button>
+          <button onClick={() => openApp('outside')}><b>02 · Bring back fresh air</b><span>{profile.walksVerified} walks · 10 min + 150 m → full energy + 3 🌿</span></button>
+          <button onClick={() => openApp('shop')}><b>03 · Grow your sanctuary</b><span>{plants}/{PLANT_IDS.length} plants · {goalItem ? `Next: ${goalItem.name} (${goalItem.currency === 'money' ? '$' : '🌿 '}${goalItem.price})` : 'Your forest is flourishing. Keep building mastery!'}</span></button>
+        </div>
+      </section>
     <div className="app-grid">
       <section className="app-col" aria-labelledby="offers-title">
         <header className="app-head">
           <h2 id="offers-title">Job offers</h2>
           <p className="muted small">
-            <Clock3 size={12} aria-hidden /> New work arrives {every} · next in ~{nextIn} min
+            <Clock3 size={12} aria-hidden /> Playable jobs refill immediately · bonus offers {every} (~{nextIn} min)
           </p>
         </header>
         {profile.activeJob && (
@@ -164,6 +182,7 @@ export default function InboxApp() {
           </ul>
         </div>
       </aside>
+    </div>
     </div>
   )
 }

@@ -23,7 +23,7 @@ describe('procedural jobs', () => {
   for (const template of TEMPLATE_IDS) {
     it(`${template}: for every seed, the answer passes and every wrong option fails`, async () => {
       for (const seed of SEEDS) {
-        for (const tier of [1, 2, 3]) {
+        for (const tier of [1, 2, 3, 6, 10]) {
           const c = generateChallenge(`gen:${template}:${seed}:${tier}`)!
           expect(c.minLevel).toBe(tier)
           for (const choice of c.choices) {

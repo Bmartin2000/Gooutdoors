@@ -1,23 +1,27 @@
 import { useGame } from '../../app/GameContext.tsx'
 import { SKILLS } from '../../content/challenges.ts'
-import { pointsToNext } from '../../game/economy.ts'
+import { pointsToNext, SKILL_THRESHOLDS, trainingCost } from '../../game/economy.ts'
+import { useState } from 'react'
 import { LEVELS, levelProgress, TOOLS } from '../../game/levels.ts'
 
 export default function SkillsApp() {
-  const { profile } = useGame()
+  const { profile, train, notify, openApp } = useGame()
+  const [training, setTraining] = useState(false)
   const { current, next, ratio } = levelProgress(profile.xp)
   return (
     <div className="app-grid">
       <section className="app-col" aria-labelledby="skills-title">
         <header className="app-head">
           <h2 id="skills-title">Skills</h2>
-          <p className="muted small">Jobs train the skills they use. Higher skills unlock better-paying offers.</p>
+          <p className="muted small">Jobs earn practice points for free. Spend money, fresh air and 5 energy to train any skill yourself. Ten skill ranks unlock better contracts.</p>
         </header>
         <ul className="skills">
           {SKILLS.map((s) => {
             const lvl = profile.skills[s.id]
             const pts = profile.skillPoints[s.id]
             const need = pointsToNext(pts)
+            const cost = trainingCost(pts)
+            const reason = need === null ? 'Mastered' : profile.money < cost.money ? `Need $${cost.money - profile.money} more` : profile.tokens < cost.tokens ? 'Earn 1 🌿 outside' : profile.energy < cost.energy ? 'Recharge outside' : null
             return (
               <li key={s.id}>
                 <div className="row-between">
@@ -27,11 +31,17 @@ export default function SkillsApp() {
                     {need !== null ? ` · ${need} pt to next` : ' · max'}
                   </span>
                 </div>
-                <div className="skill-pips" aria-label={`${s.name} level ${lvl} of 4`}>
-                  {[1, 2, 3, 4].map((i) => (
+                <div className="skill-pips" aria-label={`${s.name} level ${lvl} of ${SKILL_THRESHOLDS.length}`}>
+                  {SKILL_THRESHOLDS.map((_, index) => index + 1).map((i) => (
                     <i key={i} className={i <= lvl ? 'is-on' : ''} />
                   ))}
                 </div>
+                <p className="small muted">{pts} practice points · {need === null ? 'Mastered!' : `Next rank in ${need} points`}</p>
+                {need !== null && <button type="button" className="btn btn--sm btn--primary" disabled={training || !!reason} onClick={async () => {
+                  setTraining(true)
+                  try { const error = await train(s.id); if (error) notify('warn', `Training unavailable: ${error}`) } finally { setTraining(false) }
+                }}>Train +1 · ${cost.money} + 1 🌿 + 5 energy</button>}
+                {reason && need !== null && <button type="button" className="btn btn--sm btn--ghost" onClick={() => openApp(profile.money < cost.money ? 'inbox' : 'outside')}>{reason} →</button>}
               </li>
             )
           })}

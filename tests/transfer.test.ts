@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ImportError, parseBackup, parseOuting } from '../src/storage/transfer.ts'
+import { createProfile, refreshBoard } from '../src/game/economy.ts'
 
 const walk = {
   id: 'walk-123456',
@@ -76,6 +77,12 @@ describe('admin overrides in outings', () => {
 })
 
 describe('backup import', () => {
+  it('restores a board containing generated contracts', () => {
+    const date = new Date('2026-10-11T12:00:00Z')
+    const profile = refreshBoard(createProfile(date), date, 2).profile
+    const parsed = parseBackup({ format: 'afk.exe/backup', version: 2, exportedAt: date.toISOString(), profile, ledger: [], evidence: [] })
+    expect(parsed.profile.board).toEqual(profile.board)
+  })
   it('rejects an impossible profile', () => {
     expect(() =>
       parseBackup({ format: 'afk.exe/backup', version: 2, exportedAt: '2026-10-11T12:00:00.000Z', profile: { version: 2, xp: -50 }, ledger: [], evidence: [] }),

@@ -182,7 +182,7 @@ export default function OS({ mode, style, onLookAround }: { mode: 'monitor' | 'f
             <span>{profile.jobsDone}</span>
           </div>
         </nav>
-        <main className="os-main" id="main">
+        <main className="os-main" id="main" key={app}>
           <ErrorBoundary key={app}>{content}</ErrorBoundary>
         </main>
       </div>

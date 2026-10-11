@@ -1,4 +1,6 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { PLANT_IDS, getShopItem } from '../content/shop.ts'
+import type { UpgradeId } from '../game/types.ts'
 import { useGame } from '../app/GameContext.tsx'
 import { usePreferences } from '../app/usePreferences.ts'
 import type { OfficeView, ScreenRect, Stage } from '../scene/OfficeScene.tsx'
@@ -39,7 +41,7 @@ class SceneBoundary extends Component<{ children: ReactNode; onFail: () => void 
   }
 }
 
-const PLANTS = ['desk-seedling', 'floor-plant', 'hanging-plant', 'moss-rug', 'wall-vines', 'big-plant']
+const PLANTS: readonly string[] = PLANT_IDS
 
 export function natureStage(upgrades: string[]): Stage {
   const plants = upgrades.filter((u) => PLANTS.includes(u)).length
@@ -47,15 +49,31 @@ export function natureStage(upgrades: string[]): Stage {
 }
 
 export default function DeskPage() {
-  const { profile, settings, moss, session } = useGame()
+  const { profile, settings, moss, session, ready } = useGame()
   const needsLogin = loginConfigured && !session
   const [botPoint, setBotPoint] = useState<{ x: number; y: number } | null>(null)
   const { reducedMotion } = usePreferences(settings)
   const [webgl, setWebgl] = useState(hasWebGL)
   const [view, setView] = useState<OfficeView>('desk')
+  const [angle, setAngle] = useState(0)
+  const [growth, setGrowth] = useState<string | null>(null)
+  const previous = useRef<UpgradeId[] | null>(null)
+  const growthTimer = useRef<number | undefined>(undefined)
   const [settled, setSettled] = useState<OfficeView | null>(null)
   const [rect, setRect] = useState<ScreenRect | null>(null)
   const [viewport, setViewport] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
+
+  useEffect(() => {
+    if (!ready) return
+    const added = previous.current && profile.upgrades.find((id) => !previous.current!.includes(id))
+    previous.current = profile.upgrades
+    if (!added) return
+    setGrowth(`${getShopItem(added).name} · ${getShopItem(added).perkText}`)
+    if (webgl) { setSettled(null); setView('room'); setAngle(0) }
+    window.clearTimeout(growthTimer.current)
+    growthTimer.current = window.setTimeout(() => setGrowth(null), 5500)
+  }, [profile.upgrades, ready, webgl])
+  useEffect(() => () => window.clearTimeout(growthTimer.current), [])
 
   useEffect(() => {
     const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
@@ -79,11 +97,12 @@ export default function DeskPage() {
   return (
     <div className={`desk desk--stage-${natureStage(profile.upgrades)}`}>
       {webgl && (
-        <div className={`desk__scene ${full ? 'is-dimmed' : ''}`} aria-hidden>
+        <div className={`desk__scene ${full && view === 'desk' ? 'is-dimmed' : ''}`} aria-hidden>
           <SceneBoundary onFail={() => setWebgl(false)}>
             <Suspense fallback={null}>
               <OfficeScene
                 view={full ? 'room' : view}
+                angle={angle}
                 talking={!!moss}
                 onBotPoint={onBotPoint}
                 natureStage={natureStage(profile.upgrades)}
@@ -103,7 +122,7 @@ export default function DeskPage() {
         <OS
           mode={mounted ? 'monitor' : 'full'}
           style={mounted && rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : undefined}
-          onLookAround={webgl && !full ? lookAround : undefined}
+          onLookAround={webgl ? lookAround : undefined}
         />
       )}
 
@@ -111,13 +130,19 @@ export default function DeskPage() {
 
       {view === 'room' && (
         <div className="room-hud">
-          <p className="room-hud__title">Your office</p>
-          <p className="room-hud__sub">Plants come from fresh-air tokens, gear from client money.</p>
+          <p className="room-hud__title">{growth ? '🌱 Your office is growing!' : 'Your little sanctuary'}</p>
+          <p className="room-hud__sub" role="status">{growth ?? `${profile.upgrades.filter((id) => PLANT_IDS.includes(id)).length}/${PLANT_IDS.length} plants · Each leaf makes this place more alive.`}</p>
+          <div className="row-2">
+            <button className="btn" aria-label="Look left" onClick={() => setAngle((a) => Math.max(-0.9, a - 0.3))}>↶ Left</button>
+            <button className="btn" onClick={() => setAngle(0)}>Center</button>
+            <button className="btn" aria-label="Look right" onClick={() => setAngle((a) => Math.min(0.9, a + 0.3))}>Right ↷</button>
+          </div>
           <button type="button" className="btn btn--primary btn--lg" onClick={lookAround}>
             Sit back down
           </button>
         </div>
       )}
+      {growth && view === 'desk' && <div className="growth-toast" role="status">🌱 {growth}</div>}
       {!showOS && view === 'desk' && <div className="desk__boot" aria-hidden />}
     </div>
   )

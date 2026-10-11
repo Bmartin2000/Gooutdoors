@@ -29,3 +29,4 @@ dist-ssr
 
 # Local-only test images (never commit)
 public/__devtest__/
+.tmp/

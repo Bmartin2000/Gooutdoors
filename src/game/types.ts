@@ -19,6 +19,10 @@ export type UpgradeId =
   | 'headphones'
   | 'second-monitor'
   | 'poster'
+  | 'terrarium'
+  | 'bonsai'
+  | 'bookshelf'
+  | 'string-lights'
 
 /** One deterministic check shown when a coding choice is "run". */
 export interface CaseResult {

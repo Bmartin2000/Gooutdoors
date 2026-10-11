@@ -29,7 +29,7 @@ const PALETTES: Palette[] = [
   { wall: '#5b6066', wallSide: '#4d5258', floor: '#5d6266', floorEdge: '#1b1d1f', sun: '#d4e0f0', sunIntensity: 2.2, sky: '#b8c6d6', ground: '#2a2e33', hemi: 1.15, glass: '#bcd0e6', screen: '#7f9bbf', bot: '#cfe0f5' },
   { wall: '#726e64', wallSide: '#625f57', floor: '#8a7864', floorEdge: '#2a241e', sun: '#f6e6c8', sunIntensity: 3.0, sky: '#e2dccb', ground: '#3a342a', hemi: 1.25, glass: '#f1e8cc', screen: '#8dbb84', bot: '#b6e3a9' },
   { wall: '#7f7666', wallSide: '#6e6658', floor: '#9a7a5a', floorEdge: '#3a2c21', sun: '#ffdca6', sunIntensity: 3.6, sky: '#f2e2bf', ground: '#45392a', hemi: 1.3, glass: '#ffe7b8', screen: '#9fd08f', bot: '#a7e29a' },
-  { wall: '#8c7d67', wallSide: '#7a6c58', floor: '#a47d58', floorEdge: '#45352a', sun: '#ffc274', sunIntensity: 4.2, sky: '#ffe2ae', ground: '#4d3d29', hemi: 1.35, glass: '#ffd894', screen: '#b5e3a2', bot: '#c3f0b4' },
+  { wall: '#829475', wallSide: '#6b805f', floor: '#948260', floorEdge: '#35452a', sun: '#ffc274', sunIntensity: 4.2, sky: '#ffe2ae', ground: '#4d3d29', hemi: 1.35, glass: '#ffd894', screen: '#b5e3a2', bot: '#c3f0b4' },
 ]
 
 /* ───────────── animated colour helpers ───────────── */
@@ -60,7 +60,7 @@ function LerpMaterial({ color, reduced, roughness = 0.9, metalness = 0, emissive
 
 function Grow({ visible, reduced, delay = 0, children, position, rotation }: { visible: boolean; reduced: boolean; delay?: number; children: ReactNode; position?: [number, number, number]; rotation?: [number, number, number] }) {
   const ref = useRef<THREE.Group>(null)
-  const t = useRef(visible ? 1 : 0)
+  const t = useRef(reduced && visible ? 1 : 0)
   const wait = useRef(delay)
   useFrame((_, dt) => {
     if (!ref.current) return
@@ -669,7 +669,7 @@ export interface ScreenRect {
   height: number
 }
 
-function CameraRig({ view, reduced, onScreenRect, onSettled, onBotPoint }: { view: OfficeView; reduced: boolean; onScreenRect: (r: ScreenRect | null) => void; onSettled: (v: OfficeView) => void; onBotPoint: (p: { x: number; y: number } | null) => void }) {
+function CameraRig({ view, angle, reduced, onScreenRect, onSettled, onBotPoint }: { view: OfficeView; angle: number; reduced: boolean; onScreenRect: (r: ScreenRect | null) => void; onSettled: (v: OfficeView) => void; onBotPoint: (p: { x: number; y: number } | null) => void }) {
   const { camera, size } = useThree()
   const target = useRef(VIEWS[view].target.clone())
   const settled = useRef<OfficeView | null>(null)
@@ -688,6 +688,7 @@ function CameraRig({ view, reduced, onScreenRect, onSettled, onBotPoint }: { vie
       const aspect = size.width / Math.max(1, size.height)
       const k = aspect < 0.9 ? 1.45 : aspect < 1.25 ? 1.18 : 1
       roomPos.copy(goal.pos).multiplyScalar(k)
+      roomPos.sub(goal.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(goal.target)
       if (!reduced) roomPos.add(sway.set(pointer.x * 0.4, pointer.y * 0.2, 0))
       pos = roomPos
     }
@@ -753,6 +754,7 @@ function CameraRig({ view, reduced, onScreenRect, onSettled, onBotPoint }: { vie
 
 export interface OfficeSceneProps {
   view: OfficeView
+  angle: number
   /** Moss has something to say: turns to you, hops, eyes glow. */
   talking: boolean
   onBotPoint: (p: { x: number; y: number } | null) => void
@@ -763,7 +765,7 @@ export interface OfficeSceneProps {
   onSettled: (v: OfficeView) => void
 }
 
-export default function OfficeScene({ view, talking, onBotPoint, natureStage, upgrades, reducedMotion, onScreenRect, onSettled }: OfficeSceneProps) {
+export default function OfficeScene({ view, angle, talking, onBotPoint, natureStage, upgrades, reducedMotion, onScreenRect, onSettled }: OfficeSceneProps) {
   const palette = PALETTES[natureStage]
   const has = (id: string) => upgrades.includes(id)
   return (
@@ -777,7 +779,7 @@ export default function OfficeScene({ view, talking, onBotPoint, natureStage, up
       }}
       aria-hidden
     >
-      <CameraRig view={view} reduced={reducedMotion} onScreenRect={onScreenRect} onSettled={onSettled} onBotPoint={onBotPoint} />
+      <CameraRig view={view} angle={angle} reduced={reducedMotion} onScreenRect={onScreenRect} onSettled={onSettled} onBotPoint={onBotPoint} />
       <Lights palette={palette} reduced={reducedMotion} stage={natureStage} />
       <Room palette={palette} reduced={reducedMotion} />
       <Desk showChair={view === 'room'} />
@@ -798,6 +800,22 @@ export default function OfficeScene({ view, talking, onBotPoint, natureStage, up
       </Grow>
       <Grow visible={has('poster')} reduced={reducedMotion}>
         <Poster />
+      </Grow>
+      <Grow visible={has('terrarium')} reduced={reducedMotion} position={[2.35, 1.98, -2.85]} delay={0.3}>
+        <mesh position={[0, 0.14, 0]}><sphereGeometry args={[0.18, 20, 16]} /><meshPhysicalMaterial color="#c7ebc7" transparent opacity={0.25} roughness={0.1} /></mesh>
+        <group scale={0.7}><Seedling /></group>
+      </Grow>
+      <Grow visible={has('bonsai')} reduced={reducedMotion} position={[-1.1, 0.785, -2.25]} delay={0.5}>
+        <group scale={0.25}><FloorPlant seed={37} height={1.3} leaves={18} /></group>
+      </Grow>
+      <Grow visible={has('bookshelf')} reduced={reducedMotion} position={[2.55, 0, -2.75]}>
+        {[0.15, 0.6, 1.05, 1.5].map((y) => <group key={y}>
+          <mesh position={[0, y, 0]} castShadow><boxGeometry args={[0.65, 0.06, 0.35]} /><meshStandardMaterial color="#b38a60" /></mesh>
+          {[-0.22, -0.1, 0.02, 0.14, 0.26].map((x, i) => <mesh key={x} position={[x, y + 0.16, 0]} castShadow><boxGeometry args={[0.07, 0.26, 0.22]} /><meshStandardMaterial color={['#8dbb84', '#e5b96e', '#9daaca'][i % 3]} /></mesh>)}
+        </group>)}
+      </Grow>
+      <Grow visible={has('string-lights')} reduced={reducedMotion}>
+        {Array.from({ length: 15 }, (_, i) => <mesh key={i} position={[-2.8 + i * 0.4, 2.8 - Math.sin(i / 14 * Math.PI) * 0.3, -2.96]}><sphereGeometry args={[0.035, 10, 8]} /><meshStandardMaterial color="#ffe2a0" emissive="#ffd080" emissiveIntensity={3} /></mesh>)}
       </Grow>
 
       <Grow visible={has('desk-seedling')} reduced={reducedMotion} position={[-0.68, 0.785, -2.5]}>

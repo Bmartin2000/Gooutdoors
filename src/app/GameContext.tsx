@@ -7,7 +7,7 @@ import { getMission, getVariant } from '../content/missions.ts'
 import { getShopItem } from '../content/shop.ts'
 import * as eco from '../game/economy.ts'
 import { levelForXp, TOOLS } from '../game/levels.ts'
-import type { AppSettings, MissionEvidence, PlayerProfile, UpgradeId } from '../game/types.ts'
+import type { AppSettings, MissionEvidence, PlayerProfile, SkillId, UpgradeId } from '../game/types.ts'
 import * as store from '../storage/gamePersistence.ts'
 import { buildBackup, downloadJson, ImportError, parseBackup, parseOuting, photoToEvidence, readJsonFile, type OutingBundle } from '../storage/transfer.ts'
 import * as admin from '../game/admin.ts'
@@ -59,6 +59,7 @@ interface GameValue {
   hint: () => Promise<void>
   abandon: () => Promise<void>
   buy: (id: UpgradeId) => Promise<eco.BuyError | null>
+  train: (skill: SkillId) => Promise<eco.TrainError | null>
   verify: (evidenceId: string) => Promise<void>
   cancelVerify: (evidenceId: string) => void
   removeEvidence: (evidenceId: string) => Promise<void>
@@ -181,7 +182,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   /* ── job board ticker: new offers on schedule, slow energy regen, notifications ── */
   useEffect(() => {
-    if (!ready || !isAIHost) return
+    if (!ready) return
     const tick = async () => {
       let arrived: string[] = []
       let featured: { client: string; title: string; pay: number } | null = null
@@ -225,7 +226,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       await mutate((p) => {
         const out = eco.acceptJob(p, offerId)
         error = out.error
-        return { profile: out.profile, ledger: null }
+        return { profile: out.error ? out.profile : eco.refreshBoard(out.profile, new Date(), settingsRef.current.jobEveryMin).profile, ledger: null }
       })
       if (!error) setApp('work')
       return error
@@ -234,13 +235,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
   )
 
   const decline = useCallback(async (offerId: string) => {
-    await mutate((p) => ({ profile: eco.declineOffer(p, offerId), ledger: null }))
+    await mutate((p) => ({ profile: eco.refreshBoard(eco.declineOffer(p, offerId), new Date(), settingsRef.current.jobEveryMin).profile, ledger: null }))
   }, [mutate])
 
   const submit = useCallback(
     async (choiceId: string) => {
       const res = await mutate<eco.SubmitOutcome>((p) => {
         const out = eco.submitAnswer(p, choiceId)
+        if (out.finished) out.profile = eco.refreshBoard(out.profile, new Date(), settingsRef.current.jobEveryMin).profile
         return { profile: out.profile, ledger: out.ledger, extra: out }
       })
       const out = res.extra ?? null
@@ -282,6 +284,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     },
     [mutate, notify],
   )
+
+  const train = useCallback(async (skill: SkillId) => {
+    let error: eco.TrainError | null = null
+    await mutate((p) => {
+      const out = eco.trainSkill(p, skill)
+      error = out.error
+      return { profile: out.profile, ledger: null }
+    })
+    if (!error) {
+      notify('success', `${skill} +1 practice point!`)
+      say('A little practice, a little fresh air. Look at you growing!', 'reward')
+      if (settingsRef.current.sound) playChime('reward')
+    }
+    return error
+  }, [mutate, notify, say])
 
   /* ── outings from the phone (LAN inbox or file) ── */
   const receiveOuting = useCallback(
@@ -536,10 +553,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       notify,
       dismissToast,
       dismissCelebration: () => setCelebration(null),
-      accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings,
+      accept, decline, submit, hint, abandon, buy, train, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings,
       deliverOuting, session, signIn, continueAsGuest, signOut, adminActions,
     }),
-    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings, deliverOuting, session, signIn, continueAsGuest, signOut, adminActions],
+    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, train, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings, deliverOuting, session, signIn, continueAsGuest, signOut, adminActions],
   )
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

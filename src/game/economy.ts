@@ -6,7 +6,7 @@
 import { CHALLENGES, CLIENTS, getChallenge } from '../content/challenges.ts'
 import { newGeneratedId } from '../content/generators.ts'
 import { getMission } from '../content/missions.ts'
-import { getShopItem } from '../content/shop.ts'
+import { getShopItem, perksFor } from '../content/shop.ts'
 import { levelForXp } from './levels.ts'
 import type {
   Challenge,
@@ -25,7 +25,7 @@ export const MAX_ENERGY = 100
 export const MAX_BOARD = 5
 export const MAX_ATTEMPTS = 2
 export const PASSIVE_ENERGY_PER_HOUR = 8
-const SKILL_THRESHOLDS = [1, 3, 6, 10]
+export const SKILL_THRESHOLDS = [1, 3, 6, 10, 16, 24, 35, 50, 70, 95]
 
 const ZERO_SKILLS: Skills = { debugging: 0, typescript: 0, testing: 0, performance: 0, async: 0 }
 
@@ -45,6 +45,28 @@ export function pointsToNext(points: number): number | null {
   return next === undefined ? null : next - points
 }
 
+export function trainingCost(points: number) {
+  return { money: 20 + skillLevel(points) * 15, tokens: 1, energy: 5 }
+}
+
+export type TrainError = 'max' | 'funds' | 'energy'
+export function trainSkill(profile: PlayerProfile, skill: SkillId, now = new Date()): { profile: PlayerProfile; error: TrainError | null } {
+  if (pointsToNext(profile.skillPoints[skill]) === null) return { profile, error: 'max' }
+  const cost = trainingCost(profile.skillPoints[skill])
+  if (profile.money < cost.money || profile.tokens < cost.tokens) return { profile, error: 'funds' }
+  if (profile.energy < cost.energy) return { profile, error: 'energy' }
+  const skillPoints = { ...profile.skillPoints, [skill]: profile.skillPoints[skill] + 1 }
+  const next = { ...profile, skillPoints, skills: skillsFromPoints(skillPoints), money: profile.money - cost.money, tokens: profile.tokens - cost.tokens, energy: profile.energy - cost.energy }
+  return { profile: { ...next, feed: pushFeed(next, 'info', `Practice: ${skill} +1 point.`, now) }, error: null }
+}
+
+/** Rewards and energy shown in the UI use the same calculation as payment. */
+export function jobTerms(profile: PlayerProfile, offer: JobOffer) {
+  const perks = perksFor(profile.upgrades)
+  const careerBonus = Math.max(0, levelForXp(profile.xp).level - 3) * 0.04
+  return { pay: Math.round(offer.pay * (1 + perks.pay + careerBonus)), xp: Math.round(offer.xp * (1 + perks.xp)), energyCost: Math.max(5, offer.energyCost - perks.energyDiscount) }
+}
+
 function makeId(prefix: string, now: Date, rng: () => number) {
   return `${prefix}-${now.getTime().toString(36)}-${Math.floor(rng() * 1e6).toString(36)}`
 }
@@ -58,7 +80,7 @@ function pushFeed(profile: PlayerProfile, kind: FeedItem['kind'], text: string, 
 
 export function offerFor(challenge: Challenge, now: Date, rng: () => number, intervalMin: number, repeat = false, featured = false): JobOffer {
   const client = CLIENTS[Math.floor(rng() * CLIENTS.length)]
-  const basePay = 60 * challenge.difficulty + Math.round((rng() * 40) / 5) * 5
+  const basePay = 60 * challenge.difficulty + Math.max(0, challenge.minLevel - 3) * 35 + Math.round((rng() * 40) / 5) * 5
   const lifetimeMin = featured ? 24 * 60 : Math.max(180, intervalMin * 6)
   const k = featured ? 1.5 : repeat ? 0.6 : 1
   return {
@@ -68,7 +90,7 @@ export function offerFor(challenge: Challenge, now: Date, rng: () => number, int
     title: challenge.title,
     pitch: challenge.brief,
     pay: Math.round((basePay * k) / 5) * 5,
-    xp: Math.round(40 * challenge.difficulty * (featured ? 1.5 : repeat ? 0.5 : 1)),
+    xp: Math.round((40 * challenge.difficulty + Math.max(0, challenge.minLevel - 3) * 10) * (featured ? 1.5 : repeat ? 0.5 : 1)),
     energyCost: 15 + 10 * challenge.difficulty,
     arrivedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + lifetimeMin * 60_000).toISOString(),
@@ -82,7 +104,7 @@ export const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 export function generatedChallenge(profile: PlayerProfile, now: Date, rng: () => number, tierBoost = 0): Challenge {
   const level = levelForXp(profile.xp).level
   const stretch = rng() < 0.25 ? 1 : 0
-  const tier = Math.min(3, Math.max(1, level + stretch + tierBoost))
+  const tier = Math.min(10, Math.max(1, level + stretch + tierBoost))
   const seed = `${dayKey(now).replace(/-/g, '')}-${Math.floor(rng() * 1e9).toString(36)}`
   return getChallenge(newGeneratedId(rng, seed, tier))!
 }
@@ -149,9 +171,10 @@ export function pickChallenge(profile: PlayerProfile, rng: () => number): { chal
 
 export function applyEnergyRegen(profile: PlayerProfile, now: Date): PlayerProfile {
   const hours = (now.getTime() - Date.parse(profile.energyUpdatedAt)) / 3_600_000
-  const gain = Math.floor(hours * PASSIVE_ENERGY_PER_HOUR)
+  const rate = PASSIVE_ENERGY_PER_HOUR + perksFor(profile.upgrades).regen
+  const gain = Math.floor(hours * rate)
   if (gain <= 0) return profile
-  const used = gain / PASSIVE_ENERGY_PER_HOUR
+  const used = gain / rate
   return {
     ...profile,
     energy: Math.min(MAX_ENERGY, profile.energy + gain),
@@ -194,6 +217,22 @@ export function refreshBoard(
     arrived.push(offer)
     next = { ...next, board: [offer, ...board], lastFeaturedDay: today }
   }
+  // Keep three playable contracts available, even when every regular offer is locked.
+  // Replace a locked regular offer if the board is full; never replace today's contract.
+  while (next.board.filter((o) => eligibility(next, getChallenge(o.challengeId)!).ok).length < 3) {
+    if (next.board.length >= MAX_BOARD) {
+      const locked = next.board.find((o) => !o.featured && !eligibility(next, getChallenge(o.challengeId)!).ok)
+      if (!locked) break
+      next = { ...next, board: next.board.filter((o) => o.id !== locked.id) }
+    }
+    let challenge = generatedChallenge(next, now, rng)
+    for (let tier = challenge.minLevel; !eligibility(next, challenge).ok; tier--) {
+      challenge = getChallenge(newGeneratedId(rng, `${now.getTime().toString(36)}-${arrived.length}-${tier}-${Math.floor(rng() * 1e9).toString(36)}`, Math.max(1, tier - 1)))!
+    }
+    const offer = offerFor(challenge, new Date(nowMs + arrived.length), rng, intervalMin)
+    arrived.push(offer)
+    next = { ...next, board: [...next.board, offer] }
+  }
   for (const offer of arrived) next = { ...next, feed: pushFeed(next, 'job-arrived', `${offer.featured ? 'Today’s contract' : 'New offer'} from ${offer.client}: ${offer.title}`, now) }
   if (!arrived.length && !expired && next === profile) return { profile, arrived, expired }
   return { profile: next, arrived, expired }
@@ -207,13 +246,14 @@ export function acceptJob(profile: PlayerProfile, offerId: string, now = new Dat
   const challenge = offer && getChallenge(offer.challengeId)
   if (!offer || !challenge) return { profile, error: 'not-found' }
   if (!eligibility(profile, challenge).ok) return { profile, error: 'not-qualified' }
-  if (profile.energy < offer.energyCost) return { profile, error: 'no-energy' }
+  const terms = jobTerms(profile, offer)
+  if (profile.energy < terms.energyCost) return { profile, error: 'no-energy' }
   return {
     profile: {
       ...profile,
-      energy: profile.energy - offer.energyCost,
+      energy: profile.energy - terms.energyCost,
       board: profile.board.filter((o) => o.id !== offerId),
-      activeJob: { offer, acceptedAt: now.toISOString(), attempts: 0, eliminated: [] },
+      activeJob: { offer: { ...offer, ...terms }, acceptedAt: now.toISOString(), attempts: 0, eliminated: [] },
     },
     error: null,
   }
@@ -327,7 +367,9 @@ export function applyWalk(profile: PlayerProfile, keys: ReadonlySet<string>, sum
   const key = `walk:${summary.id}`
   if (keys.has(key)) return { profile, ledger: null, alreadyGranted: true, levelUp: null }
   if (!summary.verified) return { profile, ledger: null, alreadyGranted: false, levelUp: null }
-  const { tokens, xp } = walkReward(summary)
+  const base = walkReward(summary)
+  const tokens = base.tokens + perksFor(profile.upgrades).walkTokens
+  const xp = base.xp
   const before = levelForXp(profile.xp).level
   const after = levelForXp(profile.xp + xp).level
   let next: PlayerProfile = {

@@ -12,7 +12,9 @@ export default function Onboarding() {
   const beginRef = useRef<HTMLButtonElement>(null)
   const first = CONTRACTS[0]
 
-  useEffect(() => beginRef.current?.focus(), [])
+  useEffect(() => {
+    beginRef.current?.focus()
+  }, [])
 
   const begin = async () => {
     await completeOnboarding()

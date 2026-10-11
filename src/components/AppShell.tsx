@@ -61,7 +61,7 @@ function MobileNav() {
 }
 
 export default function AppShell() {
-  const { ready, profile, settings } = useGame()
+  const { ready, profile, settings, isAIHost } = useGame()
   const { reducedMotion } = usePreferences(settings)
   const online = useOnline()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -96,7 +96,7 @@ export default function AppShell() {
       </main>
       <MobileNav />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {ready && !profile.onboardedAt && <Onboarding />}
+      {ready && isAIHost && !profile.onboardedAt && <Onboarding />}
       <RewardReveal reducedMotion={reducedMotion} />
       <Toasts />
     </div>

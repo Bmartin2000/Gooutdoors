@@ -27,7 +27,7 @@ function phaseText(phase: string, warm: string, seconds: number) {
 
 export default function EvidenceCard({ item, prominent = false }: { item: MissionEvidence; prominent?: boolean }) {
   const { profile, progress, verify, cancelVerify, removeEvidence, exportEvidence, sendToDesk, isAIHost, field } = useGame()
-  const { diagnostics, warm } = useAIStatus()
+  const { diagnostics, warm, recheck } = useAIStatus()
   const url = useObjectUrl(item.image)
   const mission = getMission(item.missionId)
   const variant = getVariant(item.missionId, item.variantId)
@@ -134,6 +134,11 @@ export default function EvidenceCard({ item, prominent = false }: { item: Missio
                       <RotateCcw size={15} aria-hidden /> Verify again
                     </>
                   )}
+                </button>
+              )}
+              {isAIHost && !canVerifyHere && item.status !== 'verified' && (
+                <button type="button" className="btn btn--sm" onClick={() => void recheck()}>
+                  <RotateCcw size={14} aria-hidden /> Check local AI
                 </button>
               )}
               {!isAIHost && item.status !== 'verified' && field?.pairToken && (

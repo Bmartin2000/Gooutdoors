@@ -1,7 +1,31 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 },
-    { "name": "start", "runtimeExecutable": "npm", "runtimeArgs": ["start"], "port": 4173 }
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "start",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "start"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "start-lan",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start:lan"
+      ],
+      "port": 4173
+    }
   ]
 }

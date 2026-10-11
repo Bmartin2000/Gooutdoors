@@ -16,10 +16,9 @@ export function afkServiceWorker(): Plugin {
         .filter((file) => !file.endsWith('.map') && file !== 'index.html')
         .map((file) => `/${file}`)
       const precache = [...PUBLIC_FILES, ...assets]
-      const version = createHash('sha256').update(precache.join('|')).digest('hex').slice(0, 12)
-
+      
       const source = `/* AFK.exe service worker — generated at build time. */
-const CACHE = 'afk-exe-${version}';
+const CACHE = 'afk-exe-__VERSION__';
 const PRECACHE = ${JSON.stringify(precache)};
 const NEVER_CACHE = ['/ollama/', '/afk-local/', '/afk-sync/'];
 
@@ -44,14 +43,16 @@ self.addEventListener('fetch', (event) => {
 
   // App routes: network first so updates land, cached shell when offline.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(request).catch(() => caches.match('/index.html', { ignoreVary: true })));
     return;
   }
   // Hashed assets: cache first.
-  event.respondWith(caches.match(request).then((hit) => hit || fetch(request)));
+  event.respondWith(caches.match(request, { ignoreVary: true, ignoreSearch: true }).then((hit) => hit || fetch(request)));
 });
 `
-      this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+      // The cache version covers both the asset list and the worker logic itself.
+      const version = createHash('sha256').update(source).digest('hex').slice(0, 12)
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source: source.replace('__VERSION__', version) })
     },
   }
 }

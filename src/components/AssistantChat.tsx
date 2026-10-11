@@ -18,7 +18,9 @@ export default function AssistantChat() {
   const controller = useRef<AbortController | null>(null)
   const end = useRef<HTMLDivElement>(null)
 
-  useEffect(() => end.current?.scrollIntoView({ block: 'nearest' }), [messages])
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages])
   useEffect(() => () => controller.current?.abort(), [])
 
   const send = async (text: string) => {

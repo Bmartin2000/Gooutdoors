@@ -25,7 +25,9 @@ export function AIStatusProvider({ children }: { children: ReactNode }) {
   const [diagnostics, setDiagnostics] = useState<AIDiagnostics>(initial)
   const [warm, setWarm] = useState<'idle' | 'warming' | 'warm'>('idle')
   const warmRef = useRef(warm)
-  warmRef.current = warm
+  useEffect(() => {
+    warmRef.current = warm
+  }, [warm])
 
   const recheck = useCallback(async () => {
     const next = await checkDiagnostics()

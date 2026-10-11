@@ -10,17 +10,17 @@ tags: devchallenge, hf26challenge
 
 **AFK.exe** puts you at a desk in a small 3D office. The whole game runs on the computer in front of you.
 
-Client jobs land in your inbox every hour, with a chime and a desktop notification if the tab is in the background. Each job is a real, two-minute coding problem: an off-by-one error that crashes a progress badge, a type guard that lies about `null`, an `await` inside `forEach` that silently returns nothing, a refactor that passes every test and is still O(n²). Every option you pick is run against authored test cases, and you see the real outputs. No AI grades your code.
+Client jobs land in your inbox every hour. **Moss**, a small hovering robot with a plant growing out of its head, turns to you and announces them. Half the offers are generated fresh (new app, story, names and test data each time), and one *Today's contract* each day pays 1.5×. Each job is a real, two-minute coding problem: an off-by-one error that crashes a progress badge, a type guard that lies about `null`, an `await` inside `forEach` that silently returns nothing, a refactor that passes every test and is still O(n²). Every option you pick is run against authored test cases, and you see the real outputs. No AI grades your code.
 
 Jobs pay money, XP and skill points, and they have **requirements**. *"Needs Testing 1 · Level 2"* means you take the jobs you're qualified for and grow into the ones you aren't, the way a real career works.
 
 The twist is **energy**. Every job uses some, and sitting at the desk barely refills it. A walk outside refills it completely:
 
-1. Scan a QR code, tap **Start walk**, and pocket your phone.
+1. Open the installable phone app (or scan the same-Wi-Fi QR code), tap **Start walk**, and pocket your phone.
 2. The phone measures the walk with **GPS, entirely offline**: 10 minutes and 150 m from where you started. It filters inaccurate fixes and teleport jumps.
 3. A verified walk alone is worth fresh-air tokens and XP. No task is required.
 4. Partway through, **the phone buzzes**: *"Mission unlocked: find something growing through a crack."* Take one photo and pocket the phone again.
-5. Back home, the phone hands the walk to your desk over Wi-Fi.
+5. Back home, the phone hands the walk to your desk, over Wi-Fi or as a shared file.
 6. An **open-weight vision model running on your own computer** checks the photo, worth bonus tokens.
 
 Tokens buy **plants**: a seedling beside the keyboard, a monstera, a hanging pothos, wall vines. Money from jobs buys **gear**: a lamp, coffee, a second monitor. The office starts cool and graphite and turns warm and green, and the plants can only come from outside. Levels also unlock real local AI tools that run on the same model: an **AI Debugger**, a **Code Optimizer** and a **Test Generator**.
@@ -34,7 +34,7 @@ It's for developers who know they should step away and don't. AFK.exe never bloc
 
 The video is real footage: the seated office view, a job notification, a job done and paid, energy running low, a real walk with the phone buzzing, the walk credited at the desk, the photo checked by the local model, and a plant growing on the desk.
 
-There is no hosted demo on purpose: the model runs on *your* machine.
+📱 **Try the phone app now:** https://bmartin2000.github.io/Gooutdoors/outside. Add it to your home screen and it works offline. The desk with the local AI runs on your own computer (see Code).
 
 ## Code
 
@@ -83,7 +83,7 @@ The model is strict enough that rewards feel earned. In testing it rejected a ph
 **Correctness.**
 
 - Every reward (job, walk, photo) is written in one IndexedDB transaction under a unique ledger key. Double clicks, reloads and re-sent walks can't pay twice.
-- 58 unit tests cover:
+- 68 unit tests (including about 1,800 generated-job checks) cover:
   - every job's answer key against its real outputs
   - the economy
   - GPS verification, including staying home, a short dash and teleports

@@ -22,12 +22,15 @@
 | Desktop system notification for a new job | **NOT TESTED**. Implemented; needs a manual check with permission granted and the tab in the background. |
 | Screen reader pass | **NOT TESTED** |
 
+| Phone app deployed to GitHub Pages: CI ran a clean install, all 68 tests and the build; the live site has a secure context, GPS, Wake Lock and an active service worker with an offline cache | PASS (https://bmartin2000.github.io/Gooutdoors/outside) |
+| Moss announcements (greeting, new job, today's contract) and the featured offer | PASS (browser) |
+
 ## Your remaining personal actions
 
-1. [ ] **Real walk (about 15 minutes, strongly recommended).** Run `npm run start:lan`, scan the QR code from Outside, accept the certificate once, then walk 10+ minutes and 150+ m. Take the mission photo when the phone buzzes, come back, tap **Send to my desk**, and verify the photo on the desk. Note what happened, honestly, in a sentence or two for the post.
+1. [ ] **Real walk (about 15 minutes, strongly recommended).** Install https://bmartin2000.github.io/Gooutdoors/outside on your phone (or use `npm run start:lan` and the Wi-Fi QR code), then walk 10+ minutes and 150+ m. Take the mission photo when the phone buzzes, come back, tap **Send to my desk**, and verify the photo on the desk. Note what happened, honestly, in a sentence or two for the post.
 2. [ ] **Screenshots** into `docs/media/` (`desk.png`, `walk.png`, `room.png`), then reference them in the README.
 3. [ ] **Recording** following `docs/DEMO_SCRIPT.md`. Every functional claim needs real footage.
-4. [ ] **Push.** Run `git push -u origin main` yourself. The remote is `github.com/Bmartin2000/Gooutdoors`, created 2026-10-11. Nothing has been pushed by the agent.
+4. [x] **Pushed** to `github.com/Bmartin2000/Gooutdoors` (created 2026-10-11) with your approval. Pages deploys automatically on every push.
 5. [ ] **Check the repo:** `git ls-files`. Make sure there's no `.env`, no photos and no model weights.
 6. [ ] **Fill in `docs/DEV_SUBMISSION.md`:** the video URL and repo URL. Optionally add an agent-session link. Leave Prize Categories out.
 7. [ ] **Publish on DEV** before **08:59 Budapest, Oct 12**, with the tags `devchallenge, hf26challenge`.

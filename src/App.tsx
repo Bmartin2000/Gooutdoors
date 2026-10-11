@@ -1,21 +1,22 @@
-import { Route, Routes } from 'react-router-dom'
-import AppShell from './components/AppShell.tsx'
-import CompanionPage from './pages/CompanionPage.tsx'
-import ContractPage from './pages/ContractPage.tsx'
-import ExplorePage from './pages/ExplorePage.tsx'
-import NotFoundPage from './pages/NotFoundPage.tsx'
-import WorkspacePage from './pages/WorkspacePage.tsx'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useGame } from './app/GameContext.tsx'
+import { usePreferences } from './app/usePreferences.ts'
+import ErrorBoundary from './components/ErrorBoundary.tsx'
+import DeskPage from './desk/DeskPage.tsx'
+import OutsidePage from './outside/OutsidePage.tsx'
 
 export default function App() {
+  const { ready, isAIHost, settings } = useGame()
+  usePreferences(settings)
+  if (!ready) return <div className="boot" aria-busy="true" aria-label="Loading AFK.exe" />
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route index element={<WorkspacePage />} />
-        <Route path="contracts/:id" element={<ContractPage />} />
-        <Route path="explore" element={<ExplorePage />} />
-        <Route path="companion" element={<CompanionPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        {/* The desk lives on the computer that runs Ollama; phones go straight outside. */}
+        <Route index element={isAIHost ? <DeskPage /> : <Navigate to="/outside" replace />} />
+        <Route path="outside" element={<OutsidePage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ErrorBoundary>
   )
 }

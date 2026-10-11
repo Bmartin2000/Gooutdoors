@@ -1,51 +1,68 @@
 import { describe, expect, it } from 'vitest'
-import { ImportError, parseBackup, parseEvidenceBundle } from '../src/storage/transfer.ts'
+import { ImportError, parseBackup, parseOuting } from '../src/storage/transfer.ts'
 
-const bundle = {
-  format: 'afk.exe/evidence',
-  version: 1,
-  exportedAt: '2026-10-11T12:00:00.000Z',
-  evidence: {
-    id: 'ev-123456',
-    contractId: 'broken-counter',
-    missionId: 'natures-debugger',
-    variantId: 'green-signal',
-    capturedAt: '2026-10-11T11:58:00.000Z',
-    width: 640,
-    height: 480,
-    mimeType: 'image/jpeg',
-    imageBase64: '/9j/4AAQSkZJRgABAQAAAQABAAD',
-  },
+const walk = {
+  id: 'walk-123456',
+  startedAt: '2026-10-11T10:00:00.000Z',
+  endedAt: '2026-10-11T10:14:00.000Z',
+  durationMin: 14,
+  maxDistanceM: 420,
+  pathM: 900,
+  fixes: 40,
+  rejectedFixes: 0,
+  verified: true,
+  thresholds: { minMinutes: 10, minDistanceM: 150 },
 }
 
-describe('evidence bundle import', () => {
-  it('accepts a valid phone export', () => {
-    expect(parseEvidenceBundle(bundle).evidence.missionId).toBe('natures-debugger')
+const outing = {
+  format: 'afk.exe/outing',
+  version: 1,
+  exportedAt: '2026-10-11T12:00:00.000Z',
+  walk,
+  photos: [
+    {
+      id: 'ev-123456',
+      missionId: 'natures-debugger',
+      variantId: 'green-signal',
+      walkId: walk.id,
+      distanceFromStartM: 300,
+      capturedAt: '2026-10-11T10:08:00.000Z',
+      width: 640,
+      height: 480,
+      mimeType: 'image/jpeg',
+      imageBase64: '/9j/4AAQSkZJRgABAQAAAQABAAD',
+    },
+  ],
+}
+
+describe('outing import', () => {
+  it('accepts a valid phone outing and carries no coordinates', () => {
+    const parsed = parseOuting(outing)
+    expect(parsed.photos).toHaveLength(1)
+    expect(JSON.stringify(parsed)).not.toMatch(/"lat"|"lon"/)
   })
 
-  it('rejects unknown contracts, bad dates, non-image types and non-base64 payloads', () => {
-    const variants = [
-      { ...bundle, evidence: { ...bundle.evidence, contractId: 'made-up' } },
-      { ...bundle, evidence: { ...bundle.evidence, capturedAt: 'yesterday' } },
-      { ...bundle, evidence: { ...bundle.evidence, mimeType: 'image/svg+xml' } },
-      { ...bundle, evidence: { ...bundle.evidence, imageBase64: '<script>alert(1)</script>' } },
-      { ...bundle, format: 'something-else' },
+  it('rejects unknown missions, SVG, non-base64 and malformed walks', () => {
+    const bad = [
+      { ...outing, photos: [{ ...outing.photos[0], missionId: 'made-up' }] },
+      { ...outing, photos: [{ ...outing.photos[0], mimeType: 'image/svg+xml' }] },
+      { ...outing, photos: [{ ...outing.photos[0], imageBase64: '<script>alert(1)</script>' }] },
+      { ...outing, walk: { ...walk, durationMin: -4 } },
+      { ...outing, format: 'something-else' },
     ]
-    for (const v of variants) expect(() => parseEvidenceBundle(v)).toThrow(ImportError)
+    for (const b of bad) expect(() => parseOuting(b)).toThrow(ImportError)
+  })
+
+  it('rejects a walk that claims verification without meeting its own thresholds', () => {
+    expect(() => parseOuting({ ...outing, walk: { ...walk, maxDistanceM: 20 } })).toThrow(ImportError)
+    expect(() => parseOuting({ ...outing, walk: { ...walk, thresholds: { minMinutes: 0, minDistanceM: 0 } } })).toThrow(ImportError)
   })
 })
 
 describe('backup import', () => {
-  it('rejects a backup with an impossible profile', () => {
+  it('rejects an impossible profile', () => {
     expect(() =>
-      parseBackup({
-        format: 'afk.exe/backup',
-        version: 1,
-        exportedAt: '2026-10-11T12:00:00.000Z',
-        profile: { version: 1, xp: -50 },
-        rewards: [],
-        evidence: [],
-      }),
+      parseBackup({ format: 'afk.exe/backup', version: 2, exportedAt: '2026-10-11T12:00:00.000Z', profile: { version: 2, xp: -50 }, ledger: [], evidence: [] }),
     ).toThrow(ImportError)
   })
 })

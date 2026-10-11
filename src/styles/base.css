@@ -65,10 +65,14 @@ button {
 }
 
 img,
-svg,
 canvas {
   display: block;
   max-width: 100%;
+}
+
+svg {
+  flex-shrink: 0;
+  vertical-align: -0.15em;
 }
 
 code,

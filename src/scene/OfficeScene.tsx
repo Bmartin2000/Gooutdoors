@@ -1,12 +1,14 @@
 /**
- * The living workspace: one contained, procedurally built diorama (no remote models or
- * textures). Room stage 0 → 3 moves it from a cool graphite cell to a warm biophilic studio.
+ * The office: one contained, procedurally built room (no remote models or textures).
+ * You sit at the desk; AFK OS (real DOM) is laid over the monitor. Upgrades bought with
+ * money and fresh-air tokens appear in the room; plants warm up the daylight.
  */
 import { Sparkles } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as THREE from 'three'
-import type { RoomStage } from '../game/types.ts'
+
+export type Stage = 0 | 1 | 2 | 3
 
 interface Palette {
   wall: string
@@ -221,82 +223,6 @@ function HangingPlant() {
   )
 }
 
-/* ───────────── furniture ───────────── */
-
-function makeScreenTexture(accent: string, stage: number) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 296
-  const ctx = canvas.getContext('2d')!
-  ctx.fillStyle = '#0c0e0d'
-  ctx.fillRect(0, 0, 512, 296)
-  ctx.fillStyle = '#1a1d1b'
-  ctx.fillRect(0, 0, 512, 22)
-  for (const [i, c] of ['#e5796b', '#e5b96e', '#8dbb84'].entries()) {
-    ctx.fillStyle = c
-    ctx.beginPath()
-    ctx.arc(14 + i * 14, 11, 4, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  const r = rng(7 + stage)
-  const palette = ['#5d6863', accent, '#e5b96e', '#9aa6a0', accent]
-  let y = 40
-  for (let line = 0; line < 13; line++) {
-    let x = 18 + (line % 4 === 0 ? 0 : 18 * Math.floor(r() * 3))
-    const words = 2 + Math.floor(r() * 5)
-    for (let w = 0; w < words && x < 470; w++) {
-      const len = 18 + r() * 70
-      ctx.fillStyle = palette[Math.floor(r() * palette.length)]
-      ctx.globalAlpha = 0.85
-      ctx.fillRect(x, y, len, 7)
-      x += len + 8
-    }
-    y += 18
-  }
-  ctx.globalAlpha = 1
-  if (stage > 0) {
-    ctx.fillStyle = accent
-    ctx.globalAlpha = 0.18
-    ctx.fillRect(330, 40, 160, 230)
-    ctx.globalAlpha = 1
-    ctx.fillStyle = accent
-    ctx.font = '600 15px sans-serif'
-    ctx.fillText('AFK.exe', 348, 66)
-    ctx.font = '12px sans-serif'
-    ctx.fillStyle = '#c7d3c3'
-    const tools = ['AI Debugger', 'Code Optimizer', 'Test Generator'].slice(0, stage)
-    tools.forEach((t, i) => ctx.fillText(`✓ ${t}`, 348, 96 + i * 22))
-  }
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.anisotropy = 4
-  return tex
-}
-
-function Monitor({ stage, accent }: { stage: number; accent: string }) {
-  const texture = useMemo(() => makeScreenTexture(accent, stage), [accent, stage])
-  useEffect(() => () => texture.dispose(), [texture])
-  return (
-    <group position={[0.25, 0.79, -2.62]}>
-      <mesh position={[0, 0.02, 0.05]} castShadow>
-        <boxGeometry args={[0.32, 0.02, 0.2]} />
-        <meshStandardMaterial color="#b9b6ae" metalness={0.6} roughness={0.35} />
-      </mesh>
-      <mesh position={[0, 0.2, 0]} castShadow>
-        <boxGeometry args={[0.05, 0.36, 0.03]} />
-        <meshStandardMaterial color="#b9b6ae" metalness={0.6} roughness={0.35} />
-      </mesh>
-      <mesh position={[0, 0.5, 0.03]} castShadow>
-        <boxGeometry args={[1.18, 0.7, 0.035]} />
-        <meshStandardMaterial color="#141615" metalness={0.3} roughness={0.5} />
-      </mesh>
-      <mesh position={[0, 0.5, 0.049]}>
-        <planeGeometry args={[1.12, 0.645]} />
-        <meshBasicMaterial map={texture} toneMapped={false} />
-      </mesh>
-    </group>
-  )
-}
 
 function Bot({ color, stage, reduced }: { color: string; stage: number; reduced: boolean }) {
   const ref = useRef<THREE.Group>(null)
@@ -312,7 +238,7 @@ function Bot({ color, stage, reduced }: { color: string; stage: number; reduced:
     ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, -0.5 + pointer.x * 0.5, 0.05)
   })
   return (
-    <group ref={ref} position={[1.18, 1.02, -2.3]} rotation={[0, -0.5, 0]}>
+    <group ref={ref} position={[1.07, 1.02, -2.32]} rotation={[0, -0.5, 0]} scale={0.8}>
       <mesh castShadow>
         <sphereGeometry args={[0.12, 32, 24]} />
         <meshStandardMaterial color="#e9e6df" roughness={0.35} metalness={0.05} />
@@ -343,7 +269,7 @@ function Bot({ color, stage, reduced }: { color: string; stage: number; reduced:
   )
 }
 
-function Desk() {
+function Desk({ showChair }: { showChair: boolean }) {
   return (
     <group>
       <mesh position={[0.3, 0.76, -2.45]} castShadow receiveShadow>
@@ -368,7 +294,8 @@ function Desk() {
         <cylinderGeometry args={[0.045, 0.04, 0.1, 20]} />
         <meshStandardMaterial color="#1f2321" roughness={0.4} />
       </mesh>
-      {/* chair */}
+      {/* chair: behind you at the desk, visible from the room view */}
+      {showChair && (
       <group position={[0.35, 0, -1.45]} rotation={[0, 0.25, 0]}>
         <mesh position={[0, 0.47, 0]} castShadow receiveShadow>
           <boxGeometry args={[0.52, 0.06, 0.5]} />
@@ -387,6 +314,7 @@ function Desk() {
           <meshStandardMaterial color="#1b1d1c" />
         </mesh>
       </group>
+      )}
     </group>
   )
 }
@@ -524,89 +452,295 @@ function OutsideFoliage({ visible, reduced }: { visible: boolean; reduced: boole
   )
 }
 
-function CameraRig({ reduced }: { reduced: boolean }) {
+
+/* ───────────── office items ───────────── */
+
+function DeskLamp({ on }: { on: boolean }) {
+  return (
+    <group position={[-0.85, 0.785, -2.72]} rotation={[0, 0.5, 0]}>
+      <mesh position={[0, 0.015, 0]} castShadow>
+        <cylinderGeometry args={[0.09, 0.1, 0.03, 24]} />
+        <meshStandardMaterial color="#1d201e" metalness={0.4} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.25, 0]} rotation={[0, 0, 0.25]} castShadow>
+        <cylinderGeometry args={[0.012, 0.012, 0.5, 8]} />
+        <meshStandardMaterial color="#1d201e" metalness={0.5} roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.07, 0.5, 0]} rotation={[0, 0, -0.9]} castShadow>
+        <coneGeometry args={[0.09, 0.14, 24, 1, true]} />
+        <meshStandardMaterial color="#d8c7a3" side={THREE.DoubleSide} emissive={on ? '#ffcf8a' : '#000000'} emissiveIntensity={on ? 0.6 : 0} />
+      </mesh>
+      {on && <pointLight position={[0.0, 0.42, 0.05]} intensity={2.2} distance={2.6} color="#ffc983" />}
+    </group>
+  )
+}
+
+function Mug() {
+  return (
+    <group position={[-0.28, 0.785, -1.98]}>
+      <mesh position={[0, 0.055, 0]} castShadow>
+        <cylinderGeometry args={[0.045, 0.04, 0.11, 24]} />
+        <meshStandardMaterial color="#e9e3d6" roughness={0.4} />
+      </mesh>
+      <mesh position={[0.05, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <torusGeometry args={[0.025, 0.008, 8, 16]} />
+        <meshStandardMaterial color="#e9e3d6" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.105, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.04, 20]} />
+        <meshStandardMaterial color="#3b2416" roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+function Headphones() {
+  return (
+    <group position={[0.82, 0.8, -2.02]} rotation={[-Math.PI / 2, 0, -0.4]}>
+      <mesh>
+        <torusGeometry args={[0.1, 0.012, 8, 32, Math.PI]} />
+        <meshStandardMaterial color="#2a2d2c" roughness={0.5} />
+      </mesh>
+      {[-0.1, 0.1].map((x) => (
+        <mesh key={x} position={[x, 0, -0.01]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.03, 20]} />
+          <meshStandardMaterial color="#1b1d1c" roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function SecondMonitor() {
+  return (
+    <group position={[1.5, 0.79, -2.5]} rotation={[0, -0.55, 0]}>
+      <mesh position={[0, 0.2, 0]} castShadow>
+        <boxGeometry args={[0.04, 0.4, 0.03]} />
+        <meshStandardMaterial color="#b9b6ae" metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0.5, 0.02]} castShadow>
+        <boxGeometry args={[0.62, 0.38, 0.03]} />
+        <meshStandardMaterial color="#141615" />
+      </mesh>
+      <mesh position={[0, 0.5, 0.036]}>
+        <planeGeometry args={[0.58, 0.34]} />
+        <meshBasicMaterial color="#1c2a22" toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function Poster() {
+  return (
+    <group position={[-1.75, 1.95, -2.99]}>
+      <mesh>
+        <planeGeometry args={[0.7, 0.95]} />
+        <meshStandardMaterial color="#e9e1cf" />
+      </mesh>
+      <mesh position={[0, 0.02, 0.003]}>
+        <planeGeometry args={[0.58, 0.7]} />
+        <meshStandardMaterial color="#7d9a6b" />
+      </mesh>
+      <mesh position={[-0.05, 0.08, 0.006]} rotation={[0, 0, 0.6]}>
+        <planeGeometry args={[0.5, 0.025]} />
+        <meshStandardMaterial color="#e7b86a" />
+      </mesh>
+      <mesh position={[0.08, -0.12, 0.006]} rotation={[0, 0, -0.3]}>
+        <planeGeometry args={[0.4, 0.02]} />
+        <meshStandardMaterial color="#e7b86a" />
+      </mesh>
+    </group>
+  )
+}
+
+/** The main monitor. Its screen is left dark: the real AFK OS is DOM, laid over it. */
+const SCREEN = { center: new THREE.Vector3(0.25, 1.36, -2.585), width: 1.56, height: 0.9 }
+
+function MainMonitor({ glow }: { glow: string }) {
+  return (
+    <group>
+      <mesh position={[0.25, 0.81, -2.55]} castShadow>
+        <boxGeometry args={[0.36, 0.02, 0.22]} />
+        <meshStandardMaterial color="#b9b6ae" metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.25, 0.95, -2.62]} castShadow>
+        <boxGeometry args={[0.06, 0.3, 0.03]} />
+        <meshStandardMaterial color="#b9b6ae" metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.25, 1.36, -2.62]} castShadow>
+        <boxGeometry args={[SCREEN.width + 0.06, SCREEN.height + 0.06, 0.05]} />
+        <meshStandardMaterial color="#121413" metalness={0.3} roughness={0.5} />
+      </mesh>
+      <mesh position={[SCREEN.center.x, SCREEN.center.y, SCREEN.center.z]}>
+        <planeGeometry args={[SCREEN.width, SCREEN.height]} />
+        <meshBasicMaterial color="#0b0d0c" toneMapped={false} />
+      </mesh>
+      {/* soft light the screen casts onto the desk */}
+      <pointLight position={[0.25, 1.2, -2.2]} intensity={0.6} distance={1.8} color={glow} />
+    </group>
+  )
+}
+
+/* ───────────── camera ───────────── */
+
+export type OfficeView = 'desk' | 'room'
+
+const VIEWS = {
+  desk: { pos: new THREE.Vector3(0.25, 1.31, -1.08), target: new THREE.Vector3(0.25, 1.33, -2.6), fov: 52 },
+  room: { pos: new THREE.Vector3(7.6, 6.0, 8.6), target: new THREE.Vector3(-0.2, 0.85, -0.95), fov: 30 },
+}
+
+export interface ScreenRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+function CameraRig({ view, reduced, onScreenRect, onSettled }: { view: OfficeView; reduced: boolean; onScreenRect: (r: ScreenRect | null) => void; onSettled: (v: OfficeView) => void }) {
   const { camera, size } = useThree()
-  const base = useMemo(() => new THREE.Vector3(), [])
-  useEffect(() => {
-    // Pull back on narrow (portrait) canvases so the whole diorama stays in frame.
-    const aspect = size.width / Math.max(1, size.height)
-    const dist = aspect < 0.9 ? 1.45 : aspect < 1.25 ? 1.18 : 1
-    base.set(7.6 * dist, 6.0 * dist, 8.6 * dist)
-    camera.position.copy(base)
-    camera.lookAt(-0.2, 0.85, -0.95)
-  }, [base, camera, size])
+  const target = useRef(VIEWS[view].target.clone())
+  const settled = useRef<OfficeView | null>(null)
+  const last = useRef('')
+  const corners = useMemo(() => [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], [])
+  const roomPos = useMemo(() => new THREE.Vector3(), [])
+  const sway = useMemo(() => new THREE.Vector3(), [])
+
   useFrame(({ pointer }) => {
-    if (reduced) return
-    camera.position.x += (base.x + pointer.x * 0.45 - camera.position.x) * 0.04
-    camera.position.y += (base.y + pointer.y * 0.25 - camera.position.y) * 0.04
-    camera.lookAt(-0.2, 0.85, -0.95)
+    const cam = camera as THREE.PerspectiveCamera
+    const goal = VIEWS[view]
+    let pos = goal.pos
+    if (view === 'room') {
+      const aspect = size.width / Math.max(1, size.height)
+      const k = aspect < 0.9 ? 1.45 : aspect < 1.25 ? 1.18 : 1
+      roomPos.copy(goal.pos).multiplyScalar(k)
+      if (!reduced) roomPos.add(sway.set(pointer.x * 0.4, pointer.y * 0.2, 0))
+      pos = roomPos
+    }
+    const k = reduced ? 1 : 0.08
+    cam.position.lerp(pos, k)
+    target.current.lerp(goal.target, k)
+    cam.fov += (goal.fov - cam.fov) * k
+    cam.updateProjectionMatrix()
+    cam.lookAt(target.current)
+
+    const done = cam.position.distanceTo(pos) < 0.02 && Math.abs(cam.fov - goal.fov) < 0.1
+    if (done && settled.current !== view) {
+      settled.current = view
+      onSettled(view)
+    } else if (!done && settled.current === view) {
+      settled.current = null
+    }
+
+    // Project the screen's corners to CSS pixels so the DOM OS sits exactly on the monitor.
+    if (view === 'desk' && done) {
+      const { center, width, height } = SCREEN
+      corners[0].set(center.x - width / 2, center.y + height / 2, center.z)
+      corners[1].set(center.x + width / 2, center.y + height / 2, center.z)
+      corners[2].set(center.x + width / 2, center.y - height / 2, center.z)
+      corners[3].set(center.x - width / 2, center.y - height / 2, center.z)
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      for (const c of corners) {
+        const p = c.project(cam)
+        const x = ((p.x + 1) / 2) * size.width
+        const y = ((1 - p.y) / 2) * size.height
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+      const key = `${Math.round(minX)}:${Math.round(minY)}:${Math.round(maxX)}:${Math.round(maxY)}`
+      if (key !== last.current) {
+        last.current = key
+        onScreenRect({ left: minX, top: minY, width: maxX - minX, height: maxY - minY })
+      }
+    } else if (last.current !== 'none') {
+      last.current = 'none'
+      onScreenRect(null)
+    }
   })
   return null
 }
 
-export interface LivingWorkspaceSceneProps {
-  stage: RoomStage
+/* ───────────── scene ───────────── */
+
+export interface OfficeSceneProps {
+  view: OfficeView
+  natureStage: Stage
+  upgrades: string[]
   reducedMotion: boolean
+  onScreenRect: (r: ScreenRect | null) => void
+  onSettled: (v: OfficeView) => void
 }
 
-export default function LivingWorkspaceScene({ stage, reducedMotion }: LivingWorkspaceSceneProps) {
-  const palette = PALETTES[stage]
+export default function OfficeScene({ view, natureStage, upgrades, reducedMotion, onScreenRect, onSettled }: OfficeSceneProps) {
+  const palette = PALETTES[natureStage]
+  const has = (id: string) => upgrades.includes(id)
   return (
     <Canvas
       shadows
       dpr={[1, 1.75]}
-      camera={{ position: [7.6, 6.0, 8.6], fov: 30, near: 0.1, far: 80 }}
+      camera={{ position: VIEWS[view].pos.toArray(), fov: VIEWS[view].fov, near: 0.05, far: 80 }}
+      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => {
         gl.toneMappingExposure = 1.3
       }}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       aria-hidden
     >
-      <CameraRig reduced={reducedMotion} />
-      <Lights palette={palette} reduced={reducedMotion} stage={stage} />
+      <CameraRig view={view} reduced={reducedMotion} onScreenRect={onScreenRect} onSettled={onSettled} />
+      <Lights palette={palette} reduced={reducedMotion} stage={natureStage} />
       <Room palette={palette} reduced={reducedMotion} />
-      <Desk />
-      <Monitor stage={stage} accent={palette.screen} />
-      <Bot color={palette.bot} stage={stage} reduced={reducedMotion} />
+      <Desk showChair={view === 'room'} />
+      <MainMonitor glow={palette.screen} />
+      <Bot color={palette.bot} stage={natureStage} reduced={reducedMotion} />
 
-      {/* Stage 1 · First Growth */}
-      <Grow visible={stage >= 1} reduced={reducedMotion} position={[-0.72, 0.785, -2.45]} delay={0.2}>
-        <group scale={1.9}>
+      <Grow visible={has('desk-lamp')} reduced={reducedMotion}>
+        <DeskLamp on={has('desk-lamp')} />
+      </Grow>
+      <Grow visible={has('coffee')} reduced={reducedMotion}>
+        <Mug />
+      </Grow>
+      <Grow visible={has('headphones')} reduced={reducedMotion}>
+        <Headphones />
+      </Grow>
+      <Grow visible={has('second-monitor')} reduced={reducedMotion}>
+        <SecondMonitor />
+      </Grow>
+      <Grow visible={has('poster')} reduced={reducedMotion}>
+        <Poster />
+      </Grow>
+
+      <Grow visible={has('desk-seedling')} reduced={reducedMotion} position={[-0.68, 0.785, -2.5]}>
+        <group scale={1.25}>
           <Seedling />
         </group>
       </Grow>
-
-      {/* Stage 2 · New Patterns */}
-      <OutsideFoliage visible={stage >= 2} reduced={reducedMotion} />
-      <Grow visible={stage >= 2} reduced={reducedMotion} position={[-2.45, 0, -2.4]} delay={0.1}>
+      <OutsideFoliage visible={natureStage >= 2} reduced={reducedMotion} />
+      <Grow visible={has('floor-plant')} reduced={reducedMotion} position={[-2.35, 0, -2.4]}>
         <FloorPlant seed={3} />
       </Grow>
-      <Grow visible={stage >= 2} reduced={reducedMotion} position={[2.15, 2.25, -1.9]} delay={0.5}>
+      <Grow visible={has('hanging-plant')} reduced={reducedMotion} position={[1.55, 2.55, -2.3]}>
         <HangingPlant />
       </Grow>
-      <Grow visible={stage >= 2} reduced={reducedMotion} position={[2.3, 1.97, -2.85]} delay={0.7}>
-        <group scale={0.55}>
-          <Seedling />
-        </group>
+      <Grow visible={has('big-plant')} reduced={reducedMotion} position={[2.3, 0, -1.9]}>
+        <FloorPlant seed={17} height={1.9} leaves={24} />
       </Grow>
-
-      {/* Stage 3 · Living System */}
-      <Grow visible={stage >= 3} reduced={reducedMotion} position={[2.35, 0, -0.4]} delay={0.2}>
-        <FloorPlant seed={17} height={1.9} leaves={22} />
-      </Grow>
-      <Grow visible={stage >= 3} reduced={reducedMotion} position={[-2.95, 3.05, -2.95]} delay={0.6}>
+      <Grow visible={has('wall-vines')} reduced={reducedMotion} position={[-2.95, 3.05, -2.95]}>
         <Vine seed={211} length={2.6} dir={[1, -0.25, 0]} />
       </Grow>
-      <Grow visible={stage >= 3} reduced={reducedMotion} position={[-2.95, 3.0, -2.9]} delay={0.9}>
+      <Grow visible={has('wall-vines')} reduced={reducedMotion} position={[-2.95, 3.0, -2.9]}>
         <Vine seed={227} length={1.7} dir={[0, -1, 0.15]} />
       </Grow>
-      <Grow visible={stage >= 3} reduced={reducedMotion} position={[0.4, 0.005, -1.0]} delay={0.4}>
+      <Grow visible={has('moss-rug')} reduced={reducedMotion} position={[0.4, 0.005, -1.0]}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[1.25, 48]} />
           <meshStandardMaterial color="#56704a" roughness={1} />
         </mesh>
       </Grow>
-      {stage >= 3 && !reducedMotion && (
+      {natureStage >= 3 && !reducedMotion && (
         <Sparkles count={40} scale={[2.4, 1.6, 2.2]} position={[-1.2, 1.5, -0.8]} size={2.2} speed={0.25} color="#ffd894" opacity={0.6} />
       )}
     </Canvas>

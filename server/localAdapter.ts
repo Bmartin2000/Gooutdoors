@@ -86,7 +86,7 @@ function tokenMatches(given: string | null, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-function createMiddleware(ollamaHost: string, getPort: () => number | undefined, lanEnabled: () => boolean) {
+function createMiddleware(ollamaHost: string, getPort: () => number | undefined, lanEnabled: () => boolean, isHttps: () => boolean) {
   const token = randomBytes(12).toString('base64url')
   const inbox: InboxItem[] = []
   const target = new URL(ollamaHost)
@@ -143,7 +143,8 @@ function createMiddleware(ollamaHost: string, getPort: () => number | undefined,
     if (route === 'GET /afk-local/pairing') {
       if (!isLoopback(req)) return sendJson(res, 403, { error: 'loopback-only' })
       const port = getPort()
-      const urls = lanEnabled() && port ? lanAddresses().map((ip) => `http://${ip}:${port}`) : []
+      const scheme = isHttps() ? 'https' : 'http'
+      const urls = lanEnabled() && port ? lanAddresses().map((ip) => `${scheme}://${ip}:${port}`) : []
       return sendJson(res, 200, { token, lanEnabled: lanEnabled(), urls })
     }
 
@@ -166,7 +167,7 @@ function createMiddleware(ollamaHost: string, getPort: () => number | undefined,
         return sendJson(res, 400, { error: 'invalid-json' })
       }
       // Full schema validation happens in the desktop app before anything is stored.
-      if (typeof bundle !== 'object' || bundle === null || (bundle as { format?: unknown }).format !== 'afk.exe/evidence') {
+      if (typeof bundle !== 'object' || bundle === null || (bundle as { format?: unknown }).format !== 'afk.exe/outing') {
         return sendJson(res, 400, { error: 'not-an-afk-bundle' })
       }
       inbox.push({ id: randomBytes(8).toString('hex'), receivedAt: new Date().toISOString(), bundle })
@@ -227,12 +228,12 @@ export function afkLocalAdapter(ollamaHost: string): Plugin {
     name: 'afk-local-adapter',
     configureServer(server) {
       server.middlewares.use(
-        createMiddleware(ollamaHost, () => boundPort(server), () => isLanHost(server.config.server.host)),
+        createMiddleware(ollamaHost, () => boundPort(server), () => isLanHost(server.config.server.host), () => !!server.config.server.https),
       )
     },
     configurePreviewServer(server) {
       server.middlewares.use(
-        createMiddleware(ollamaHost, () => boundPort(server), () => isLanHost(server.config.preview.host)),
+        createMiddleware(ollamaHost, () => boundPort(server), () => isLanHost(server.config.preview.host), () => !!server.config.preview.https),
       )
     },
   }

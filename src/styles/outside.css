@@ -1,0 +1,238 @@
+/* ───────────── phone: Outside ───────────── */
+.outside {
+  min-height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 28px);
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+.outside__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.outside__brand {
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  flex: 1;
+}
+.outside__hero,
+.outside__live,
+.outside__summary {
+  display: grid;
+  gap: 14px;
+  padding: 22px 18px;
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.outside__leaf {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+/* Readable in sunlight: large, high-contrast type. */
+.outside__title {
+  font-size: clamp(2rem, 9vw, 2.6rem);
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.outside__lead {
+  font-size: 1.15rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.outside__live {
+  justify-items: center;
+  text-align: center;
+}
+.ring {
+  position: relative;
+  width: min(68vw, 250px);
+  aspect-ratio: 1;
+}
+.ring > svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.ring__track {
+  fill: none;
+  stroke: var(--surface-3);
+  stroke-width: 6;
+}
+.ring__fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.ring__inner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+}
+.ring__big {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.ring__small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1.05rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.goals {
+  display: flex;
+  gap: 8px;
+}
+.goals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--line-strong);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.goals span.is-done {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.verified-banner {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 650;
+}
+.summary-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.summary-stats div {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.summary-stats dt {
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+}
+.summary-stats dd {
+  margin: 2px 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.outside__pending {
+  display: grid;
+  gap: 8px;
+}
+.pending-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: var(--text-sm);
+}
+.outside__clear {
+  justify-self: center;
+}
+
+/* pocket mode: near-black OLED screen, minimal light, tap anywhere to wake */
+.pocket {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  border: 0;
+  background: #000;
+  color: #3d4a3f;
+  font: inherit;
+  cursor: pointer;
+}
+.pocket__time {
+  font-size: 2.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pocket__dist {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.pocket__ok {
+  margin-top: 8px;
+  color: #4f7f45;
+  font-weight: 600;
+}
+.pocket__hint {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
+  font-size: 0.8rem;
+  color: #222;
+}
+
+/* mission sheet */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+  background: var(--scrim);
+  animation: fade-in var(--dur-med);
+}
+.sheet__card {
+  display: grid;
+  gap: 14px;
+  padding: 22px 18px calc(env(safe-area-inset-bottom) + 22px);
+  border-radius: 26px 26px 0 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line-strong);
+  animation: rise var(--dur-med) var(--ease-out);
+}
+.sheet__title {
+  font-size: 2rem;
+  letter-spacing: -0.035em;
+}
+.sheet__instruction {
+  font-size: 1.2rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.sheet__variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip.is-on {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}

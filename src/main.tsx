@@ -10,7 +10,8 @@ import { registerServiceWorker } from './pwa/registerSW.ts'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/ui.css'
-import './styles/pages.css'
+import './styles/os.css'
+import './styles/outside.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -2,6 +2,7 @@ import { Download, RefreshCcw, ShieldCheck, Trash2, Upload, WifiOff, X } from 'l
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useAIStatus } from '../app/AIStatusContext.tsx'
 import { useGame } from '../app/GameContext.tsx'
+import { requestNotificationPermission } from '../app/notify.ts'
 import type { AppSettings } from '../game/types.ts'
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
@@ -80,6 +81,44 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
         </header>
 
         <section className="drawer__section">
+          <h3 className="section-title">Work & signals</h3>
+          <Segmented<'60' | '20' | '2'>
+            label="New job offers arrive"
+            value={String(settings.jobEveryMin) as '60' | '20' | '2'}
+            onChange={(v) => set({ jobEveryMin: Number(v) as AppSettings['jobEveryMin'] })}
+            options={[
+              { value: '60', label: 'Hourly' },
+              { value: '20', label: 'Every 20 min' },
+              { value: '2', label: 'Demo · 2 min' },
+            ]}
+          />
+          <label className="switch">
+            <input type="checkbox" checked={settings.sound} onChange={(e) => set({ sound: e.target.checked })} />
+            <span className="switch__track" aria-hidden />
+            <span>Soft chime for new jobs and rewards</span>
+          </label>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={settings.notifications}
+              onChange={async (e) => {
+                if (!e.target.checked) return set({ notifications: false })
+                const ok = await requestNotificationPermission()
+                set({ notifications: ok })
+              }}
+            />
+            <span className="switch__track" aria-hidden />
+            <span>Desktop notification when a job arrives while AFK.exe is in the background</span>
+          </label>
+          <label className="switch">
+            <input type="checkbox" checked={settings.demoWalk} onChange={(e) => set({ demoWalk: e.target.checked })} />
+            <span className="switch__track" aria-hidden />
+            <span>Demo walk thresholds (2 min / 30 m instead of 10 min / 150 m) — for recording a demo only</span>
+          </label>
+          <p className="muted small">Notifications only work while AFK.exe is open (also in a background tab). There is no cloud push service.</p>
+        </section>
+
+        <section className="drawer__section">
           <h3 className="section-title">Appearance</h3>
           <Segmented<AppSettings['theme']>
             label="Theme"
@@ -101,11 +140,6 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
               { value: 'reduced', label: 'Reduced' },
             ]}
           />
-          <label className="switch">
-            <input type="checkbox" checked={settings.sound} onChange={(e) => set({ sound: e.target.checked })} />
-            <span className="switch__track" aria-hidden />
-            <span>Soft chime when a tool unlocks</span>
-          </label>
         </section>
 
         <section className="drawer__section">
@@ -172,12 +206,13 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
           <p className="fact">
             <WifiOff size={16} aria-hidden />
             <span>
-              After the first load, the app shell and missions are cached for offline use. A phone can capture and save photos with no connection; the AI
-              check happens when the photo reaches the computer running Ollama. Photos are re-encoded on capture, which strips location metadata.
+              Walks are measured with your phone’s GPS, which needs no internet. Coordinates stay on the phone; only time and distance reach this
+              computer. Photos are re-encoded on capture, which strips their location metadata, and the AI check happens here, on your desk.
             </span>
           </p>
           <p className="muted small">
-            The vision check judges plausibility from pixels only. It cannot prove where or when a photo was taken, and its confidence is an estimate.
+            GPS can be fooled and a photo can’t prove where or when it was taken. AFK.exe checks plausibility, not identity — it’s a game that rewards
+            stepping out, not a surveillance tool.
           </p>
         </section>
       </div>

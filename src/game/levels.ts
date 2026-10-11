@@ -1,18 +1,17 @@
-import type { RoomStage, ToolId } from './types.ts'
+import type { ToolId } from './types.ts'
 
 export interface LevelInfo {
   level: number
   name: string
   minXp: number
-  roomStage: RoomStage
-  description: string
 }
 
 export const LEVELS: LevelInfo[] = [
-  { level: 1, name: 'Cold Start', minXp: 0, roomStage: 0, description: 'Graphite walls, one desk, a quiet bot.' },
-  { level: 2, name: 'First Growth', minXp: 250, roomStage: 1, description: 'A seedling and the first warm daylight.' },
-  { level: 3, name: 'New Patterns', minXp: 500, roomStage: 2, description: 'Leaf shadows and greenery climb the walls.' },
-  { level: 4, name: 'Living System', minXp: 750, roomStage: 3, description: 'A lush, golden-hour biophilic studio.' },
+  { level: 1, name: 'Intern', minXp: 0 },
+  { level: 2, name: 'Junior', minXp: 150 },
+  { level: 3, name: 'Mid-level', minXp: 400 },
+  { level: 4, name: 'Senior', minXp: 800 },
+  { level: 5, name: 'Staff', minXp: 1400 },
 ]
 
 export function levelForXp(xp: number): LevelInfo {
@@ -21,7 +20,6 @@ export function levelForXp(xp: number): LevelInfo {
   return current
 }
 
-/** Progress (0–1) toward the next level; 1 at max level. */
 export function levelProgress(xp: number): { current: LevelInfo; next: LevelInfo | null; ratio: number } {
   const current = levelForXp(xp)
   const next = LEVELS.find((l) => l.level === current.level + 1) ?? null
@@ -33,14 +31,15 @@ export interface ToolInfo {
   id: ToolId
   name: string
   tagline: string
-  unlockedBy: string | null
+  minLevel: number
 }
 
+/** All tools use the same local model; a level unlocks a focused workflow, not a smarter model. */
 export const TOOLS: ToolInfo[] = [
-  { id: 'assistant', name: 'Assistant', tagline: 'Ask about AFK.exe, local AI or a quick dev question.', unlockedBy: null },
-  { id: 'debugger', name: 'AI Debugger', tagline: 'Paste code, describe the symptom, get a suspected cause and a fix.', unlockedBy: 'broken-counter' },
-  { id: 'optimizer', name: 'Code Optimizer', tagline: 'Complexity, readability and refactoring suggestions.', unlockedBy: 'slow-duplicates' },
-  { id: 'test-generator', name: 'Test Generator', tagline: 'Vitest test cases for your function, edge cases first.', unlockedBy: 'leap-year-tests' },
+  { id: 'assistant', name: 'Assistant', tagline: 'Ask Moss a quick question.', minLevel: 1 },
+  { id: 'debugger', name: 'AI Debugger', tagline: 'Paste code + symptom → suspected cause and fix.', minLevel: 2 },
+  { id: 'optimizer', name: 'Code Optimizer', tagline: 'Complexity and refactoring suggestions.', minLevel: 3 },
+  { id: 'test-generator', name: 'Test Generator', tagline: 'Vitest cases for your function, edge cases first.', minLevel: 4 },
 ]
 
 export function getTool(id: ToolId): ToolInfo {

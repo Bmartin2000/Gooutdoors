@@ -1,40 +1,37 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { CONTRACTS } from '../src/content/contracts.ts'
-import { startContract, submitChallenge } from '../src/game/rewardEngine.ts'
-import type { MissionEvidence } from '../src/game/types.ts'
+import { applyPhoto, applyWalk } from '../src/game/economy.ts'
+import type { MissionEvidence, WalkSummary } from '../src/game/types.ts'
 import { closeDB, DB_NAME } from '../src/storage/db.ts'
-import {
-  getEvidence,
-  grantVerifiedReward,
-  listRewards,
-  loadProfile,
-  putEvidence,
-  saveProfile,
-} from '../src/storage/gamePersistence.ts'
+import { getEvidence, grantOnce, listLedger, loadProfile, putEvidence } from '../src/storage/gamePersistence.ts'
 
-const contract = CONTRACTS[0]
-const verification = {
-  model: 'qwen3.5:4b',
-  result: { matches: true, confidence: 0.9, reason: 'Moss in a pavement crack.', detectedElements: ['moss'], needsReview: false },
+const summary: WalkSummary = {
+  id: 'walk-abc123',
+  startedAt: '2026-10-11T10:00:00.000Z',
+  endedAt: '2026-10-11T10:14:00.000Z',
+  durationMin: 14,
+  maxDistanceM: 420,
+  pathM: 900,
+  fixes: 40,
+  rejectedFixes: 1,
+  verified: true,
+  thresholds: { minMinutes: 10, minDistanceM: 150 },
 }
 
-function evidence(id: string): MissionEvidence {
-  return {
-    id,
-    contractId: contract.id,
-    missionId: contract.missionId,
-    variantId: 'crack-growth',
-    image: new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }),
-    mimeType: 'image/jpeg',
-    width: 10,
-    height: 10,
-    capturedAt: '2026-10-11T12:00:00.000Z',
-    savedAt: '2026-10-11T12:00:01.000Z',
-    source: 'camera',
-    status: 'saved-for-later',
-    attempts: 0,
-  }
+const evidence: MissionEvidence = {
+  id: 'ev-1',
+  missionId: 'natures-debugger',
+  variantId: 'crack-growth',
+  walkId: summary.id,
+  image: new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }),
+  mimeType: 'image/jpeg',
+  width: 10,
+  height: 10,
+  capturedAt: '2026-10-11T10:07:00.000Z',
+  savedAt: '2026-10-11T10:20:00.000Z',
+  source: 'lan',
+  status: 'saved-for-later',
+  attempts: 0,
 }
 
 beforeEach(async () => {
@@ -45,43 +42,25 @@ beforeEach(async () => {
   })
 })
 
-async function readyForMission() {
-  let profile = await loadProfile()
-  profile = startContract(profile, contract.id)
-  profile = submitChallenge(profile, contract.id, contract.challenge.correctChoiceId).profile
-  await saveProfile(profile)
-}
-
-describe('grantVerifiedReward (IndexedDB)', () => {
-  it('grants once, persists, and survives a "reload"', async () => {
-    await readyForMission()
-    await putEvidence(evidence('ev-1'))
-
-    const first = await grantVerifiedReward(contract.id, 'ev-1', verification)
-    expect(first.transaction).not.toBeNull()
-
-    // simulate a page reload: drop the connection and read everything back
+describe('grantOnce (IndexedDB)', () => {
+  it('credits a walk once, even with concurrent calls and a reload', async () => {
+    const before = await loadProfile()
+    const results = await Promise.all([1, 2, 3].map(() => grantOnce((p, keys) => applyWalk(p, keys, summary))))
+    expect(results.filter((r) => r.ledger).length).toBe(1)
     await closeDB()
-    const reloaded = await loadProfile()
-    expect(reloaded.xp).toBe(250)
-    expect(reloaded.unlockedToolIds).toContain('debugger')
-    expect((await getEvidence('ev-1'))?.status).toBe('verified')
+    const after = await loadProfile()
+    expect(after.tokens).toBe(before.tokens + 3)
+    expect(await listLedger()).toHaveLength(1)
   })
 
-  it('does not grant twice on repeated submit, even with a different photo', async () => {
-    await readyForMission()
-    await putEvidence(evidence('ev-1'))
-    await putEvidence(evidence('ev-2'))
-
-    const results = await Promise.all([
-      grantVerifiedReward(contract.id, 'ev-1', verification),
-      grantVerifiedReward(contract.id, 'ev-1', verification),
-    ])
-    const again = await grantVerifiedReward(contract.id, 'ev-2', verification)
-
-    expect(results.filter((r) => r.transaction).length).toBe(1)
-    expect(again.alreadyGranted).toBe(true)
-    expect((await loadProfile()).xp).toBe(250)
-    expect(await listRewards()).toHaveLength(1)
+  it('verifies a photo and grants its reward in the same transaction, once per walk', async () => {
+    await putEvidence(evidence)
+    const patch = { id: evidence.id, patch: { status: 'verified' as const } }
+    const first = await grantOnce((p, keys) => applyPhoto(p, keys, evidence), patch)
+    expect(first.ledger).not.toBeNull()
+    expect((await getEvidence(evidence.id))?.status).toBe('verified')
+    const again = await grantOnce((p, keys) => applyPhoto(p, keys, { ...evidence, id: 'ev-2' }))
+    expect(again.ledger).toBeNull()
+    expect((await loadProfile()).tokens).toBe(2)
   })
 })

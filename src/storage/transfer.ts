@@ -1,25 +1,37 @@
 /**
- * Offline-friendly transfer formats. A phone can export a single captured photo as a
- * portable `.afk.json` file (AirDrop, USB, Nearby Share, e-mail to self — no AFK.exe server
- * involved), and the desktop imports it for local verification. Full backups use the same idea.
- * All imports are schema-validated before anything is written.
+ * Offline-friendly transfer formats. A phone hands an "outing" (walk summary + photos) to the
+ * desk over the same-LAN inbox or as a portable `.afk.json` file (AirDrop, USB, Nearby Share).
+ * Walk data is derived numbers only — never coordinates. Every import is schema-validated.
  */
 import { z } from 'zod'
-import { getContract, getMission } from '../content/contracts.ts'
-import type { MissionEvidence, PlayerProfile, RewardTransaction } from '../game/types.ts'
+import { CHALLENGES } from '../content/challenges.ts'
+import { getMission } from '../content/missions.ts'
+import type { LedgerEntry, MissionEvidence, PlayerProfile, WalkSummary } from '../game/types.ts'
 import { base64ToBlob, blobToBase64 } from '../ai/image.ts'
 
-const MAX_IMAGE_BASE64 = 12 * 1024 * 1024
-
 const isoDate = z.string().refine((s) => !Number.isNaN(Date.parse(s)), 'invalid date')
-const imageBase64 = z.string().min(16).max(MAX_IMAGE_BASE64).regex(/^[A-Za-z0-9+/=]+$/, 'not base64')
+const imageBase64 = z.string().min(16).max(12 * 1024 * 1024).regex(/^[A-Za-z0-9+/=]+$/, 'not base64')
 const mime = z.enum(['image/jpeg', 'image/png', 'image/webp'])
 
-const evidenceMeta = z.object({
+const walkSummary = z.object({
   id: z.string().min(4).max(80),
-  contractId: z.string().refine((id) => !!getContract(id), 'unknown contract'),
+  startedAt: isoDate,
+  endedAt: isoDate,
+  durationMin: z.number().min(0).max(24 * 60),
+  maxDistanceM: z.number().min(0).max(200_000),
+  pathM: z.number().min(0).max(500_000),
+  fixes: z.number().int().min(0).max(100_000),
+  rejectedFixes: z.number().int().min(0).max(100_000),
+  verified: z.boolean(),
+  thresholds: z.object({ minMinutes: z.number().min(0), minDistanceM: z.number().min(0) }),
+})
+
+const photo = z.object({
+  id: z.string().min(4).max(80),
   missionId: z.string().refine((id) => !!getMission(id), 'unknown mission'),
   variantId: z.string().min(1).max(60),
+  walkId: z.string().max(80).optional(),
+  distanceFromStartM: z.number().min(0).max(200_000).optional(),
   capturedAt: isoDate,
   width: z.number().int().positive().max(10000),
   height: z.number().int().positive().max(10000),
@@ -27,115 +39,66 @@ const evidenceMeta = z.object({
   imageBase64,
 })
 
-export const EvidenceBundleSchema = z.object({
-  format: z.literal('afk.exe/evidence'),
+export const OutingSchema = z.object({
+  format: z.literal('afk.exe/outing'),
   version: z.literal(1),
   exportedAt: isoDate,
-  evidence: evidenceMeta,
+  walk: walkSummary.nullable(),
+  photos: z.array(photo).max(12),
 })
 
-const verification = z.object({
-  matches: z.boolean(),
-  confidence: z.number().min(0).max(1),
-  reason: z.string().max(600),
-  detectedElements: z.array(z.string().max(80)).max(12),
-  needsReview: z.boolean(),
-})
-
-const toolId = z.enum(['assistant', 'debugger', 'optimizer', 'test-generator'])
-const stage = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)])
-
-const profileSchema = z.object({
-  version: z.literal(1),
-  xp: z.number().int().min(0).max(100000),
-  level: z.number().int().min(1).max(10),
-  roomStage: stage,
-  createdAt: isoDate,
-  onboardedAt: isoDate.nullable(),
-  completedContracts: z.array(z.string()).max(20),
-  unlockedToolIds: z.array(toolId),
-  contracts: z.record(
-    z.string(),
-    z.object({
-      status: z.enum(['available', 'coding', 'mission', 'completed']),
-      challengeAttempts: z.number().int().min(0),
-      challengeSolvedAt: isoDate.optional(),
-      variantId: z.string().optional(),
-      completedAt: isoDate.optional(),
-    }),
-  ),
-  lastAchievement: z.object({ title: z.string(), detail: z.string(), at: isoDate }).nullable(),
-})
-
-const rewardSchema = z.object({
-  completionKey: z.string(),
-  contractId: z.string(),
-  evidenceId: z.string(),
-  xpAmount: z.number(),
-  toolsUnlocked: z.array(toolId),
-  roomStageFrom: stage,
-  roomStageTo: stage,
-  levelFrom: z.number(),
-  levelTo: z.number(),
-  grantedAt: isoDate,
-})
-
-export const BackupSchema = z.object({
-  format: z.literal('afk.exe/backup'),
-  version: z.literal(1),
-  exportedAt: isoDate,
-  profile: profileSchema,
-  rewards: z.array(rewardSchema).max(50),
-  evidence: z
-    .array(
-      evidenceMeta.extend({
-        savedAt: isoDate,
-        source: z.enum(['camera', 'upload', 'import', 'lan']),
-        status: z.enum(['saved-for-later', 'verifying', 'verified', 'needs-review', 'rejected', 'verification-failed']),
-        attempts: z.number().int().min(0),
-        result: verification.optional(),
-        model: z.string().optional(),
-        verifiedAt: isoDate.optional(),
-      }),
-    )
-    .max(60),
-})
-
-export type EvidenceBundle = z.infer<typeof EvidenceBundleSchema>
+export type OutingBundle = z.infer<typeof OutingSchema>
 
 export class ImportError extends Error {}
 
-export async function evidenceToBundle(evidence: MissionEvidence): Promise<EvidenceBundle> {
+/** A walk claiming verification must actually meet the thresholds it carries. */
+export function consistentWalk(w: WalkSummary): boolean {
+  if (!w.verified) return true
+  return w.fixes >= 3 && w.durationMin >= w.thresholds.minMinutes && w.maxDistanceM >= w.thresholds.minDistanceM && w.thresholds.minMinutes >= 2 && w.thresholds.minDistanceM >= 30
+}
+
+export function parseOuting(raw: unknown): OutingBundle {
+  const parsed = OutingSchema.safeParse(raw)
+  if (!parsed.success) throw new ImportError(`Not a valid AFK.exe outing file (${parsed.error.issues[0]?.message ?? 'invalid'}).`)
+  if (parsed.data.walk && !consistentWalk(parsed.data.walk)) throw new ImportError('The walk data is inconsistent and was not imported.')
+  return parsed.data
+}
+
+export async function buildOuting(walk: WalkSummary | null, photos: MissionEvidence[]): Promise<OutingBundle> {
   return {
-    format: 'afk.exe/evidence',
+    format: 'afk.exe/outing',
     version: 1,
     exportedAt: new Date().toISOString(),
-    evidence: {
-      id: evidence.id,
-      contractId: evidence.contractId,
-      missionId: evidence.missionId,
-      variantId: evidence.variantId,
-      capturedAt: evidence.capturedAt,
-      width: evidence.width,
-      height: evidence.height,
-      mimeType: evidence.mimeType as 'image/jpeg',
-      imageBase64: await blobToBase64(evidence.image),
-    },
+    walk,
+    photos: await Promise.all(
+      photos.map(async (e) => ({
+        id: e.id,
+        missionId: e.missionId,
+        variantId: e.variantId,
+        walkId: e.walkId,
+        distanceFromStartM: e.distanceFromStartM,
+        capturedAt: e.capturedAt,
+        width: e.width,
+        height: e.height,
+        mimeType: e.mimeType as 'image/jpeg',
+        imageBase64: await blobToBase64(e.image),
+      })),
+    ),
   }
 }
 
-export function bundleToEvidence(bundle: EvidenceBundle, source: 'import' | 'lan'): MissionEvidence {
-  const e = bundle.evidence
+export function photoToEvidence(p: OutingBundle['photos'][number], source: 'import' | 'lan'): MissionEvidence {
   return {
-    id: e.id,
-    contractId: e.contractId,
-    missionId: e.missionId,
-    variantId: e.variantId,
-    image: base64ToBlob(e.imageBase64, e.mimeType),
-    mimeType: e.mimeType,
-    width: e.width,
-    height: e.height,
-    capturedAt: e.capturedAt,
+    id: p.id,
+    missionId: p.missionId,
+    variantId: p.variantId,
+    walkId: p.walkId,
+    distanceFromStartM: p.distanceFromStartM,
+    image: base64ToBlob(p.imageBase64, p.mimeType),
+    mimeType: p.mimeType,
+    width: p.width,
+    height: p.height,
+    capturedAt: p.capturedAt,
     savedAt: new Date().toISOString(),
     source,
     status: 'saved-for-later',
@@ -143,56 +106,52 @@ export function bundleToEvidence(bundle: EvidenceBundle, source: 'import' | 'lan
   }
 }
 
-export function parseEvidenceBundle(raw: unknown): EvidenceBundle {
-  const parsed = EvidenceBundleSchema.safeParse(raw)
-  if (!parsed.success) throw new ImportError(`Not a valid AFK.exe photo file (${parsed.error.issues[0]?.message ?? 'invalid'}).`)
-  return parsed.data
-}
+/* ───── full backups ───── */
 
-export async function buildBackup(profile: PlayerProfile, rewards: RewardTransaction[], evidence: MissionEvidence[]) {
+const skills = z.object({ debugging: z.number(), typescript: z.number(), testing: z.number(), performance: z.number(), async: z.number() })
+
+const BackupSchema = z.object({
+  format: z.literal('afk.exe/backup'),
+  version: z.literal(2),
+  exportedAt: isoDate,
+  profile: z
+    .object({
+      version: z.literal(2),
+      xp: z.number().int().min(0).max(1e6),
+      money: z.number().min(0).max(1e9),
+      tokens: z.number().int().min(0).max(1e6),
+      energy: z.number().min(0).max(100),
+      skills,
+      skillPoints: skills,
+      board: z.array(z.object({ id: z.string(), challengeId: z.string().refine((id) => CHALLENGES.some((c) => c.id === id)) }).passthrough()).max(10),
+      upgrades: z.array(z.string()).max(30),
+    })
+    .passthrough(),
+  ledger: z.array(z.object({ key: z.string(), kind: z.enum(['job', 'walk', 'photo']) }).passthrough()).max(5000),
+  evidence: z.array(photo.extend({ status: z.string(), savedAt: isoDate, source: z.string(), attempts: z.number() }).passthrough()).max(60),
+})
+
+export async function buildBackup(profile: PlayerProfile, ledger: LedgerEntry[], evidence: MissionEvidence[]) {
   return {
     format: 'afk.exe/backup' as const,
-    version: 1 as const,
+    version: 2 as const,
     exportedAt: new Date().toISOString(),
     profile,
-    rewards,
+    ledger,
     evidence: await Promise.all(
-      evidence.map(async (e) => ({
-        id: e.id,
-        contractId: e.contractId,
-        missionId: e.missionId,
-        variantId: e.variantId,
-        capturedAt: e.capturedAt,
-        width: e.width,
-        height: e.height,
-        mimeType: e.mimeType,
-        imageBase64: await blobToBase64(e.image),
-        savedAt: e.savedAt,
-        source: e.source,
-        // An in-flight verification cannot be resumed elsewhere.
-        status: e.status === 'verifying' ? ('saved-for-later' as const) : e.status,
-        attempts: e.attempts,
-        result: e.result,
-        model: e.model,
-        verifiedAt: e.verifiedAt,
-      })),
+      evidence.map(async ({ image, ...rest }) => ({ ...rest, status: rest.status === 'verifying' ? 'saved-for-later' : rest.status, imageBase64: await blobToBase64(image) })),
     ),
   }
 }
 
 export function parseBackup(raw: unknown) {
   const parsed = BackupSchema.safeParse(raw)
-  if (!parsed.success) throw new ImportError(`Not a valid AFK.exe backup (${parsed.error.issues[0]?.path.join('.') || 'root'}: ${parsed.error.issues[0]?.message}).`)
+  if (!parsed.success) throw new ImportError(`Not a valid AFK.exe backup (${parsed.error.issues[0]?.path.join('.') || 'root'}).`)
   const data = parsed.data
   return {
-    profile: data.profile as PlayerProfile,
-    rewards: data.rewards as RewardTransaction[],
-    evidence: data.evidence.map(
-      (e): MissionEvidence => ({
-        ...e,
-        image: base64ToBlob(e.imageBase64, e.mimeType),
-      }),
-    ),
+    profile: data.profile as unknown as PlayerProfile,
+    ledger: data.ledger as unknown as LedgerEntry[],
+    evidence: data.evidence.map(({ imageBase64: b64, ...rest }) => ({ ...rest, image: base64ToBlob(b64, rest.mimeType) }) as unknown as MissionEvidence),
   }
 }
 
@@ -217,12 +176,12 @@ export function downloadJson(data: unknown, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
-/** Uses the native share sheet (AirDrop / Nearby Share) when the platform supports files. */
+/** Native share sheet (AirDrop / Nearby Share) when files can be shared, else a download. */
 export async function shareOrDownload(data: unknown, fileName: string): Promise<'shared' | 'downloaded'> {
   const file = new File([JSON.stringify(data)], fileName, { type: 'application/json' })
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'AFK.exe mission photo' })
+      await navigator.share({ files: [file], title: 'AFK.exe outing' })
       return 'shared'
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error

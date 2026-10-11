@@ -4,7 +4,7 @@ import { useGame } from '../app/GameContext.tsx'
 import { BrandMark } from '../components/Brand.tsx'
 
 /** Shown on the desk only when a local admin login is configured (.env.local). */
-export default function LoginScreen() {
+export default function LoginScreen({ onClose }: { onClose?: () => void }) {
   const { signIn, continueAsGuest } = useGame()
   const [user, setUser] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +17,7 @@ export default function LoginScreen() {
     setError(null)
     const err = await signIn(user, password)
     setBusy(false)
+    if (!err) onClose?.()
     if (err) {
       setError(
         err === 'user'
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="login">
+    <div className={`login ${onClose ? 'login--sheet' : ''}`}>
       <form className="login__card" onSubmit={(e) => void submit(e)}>
         <div className="login__brand">
           <BrandMark size={36} />
@@ -59,10 +60,16 @@ export default function LoginScreen() {
         <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={busy}>
           <LogIn size={16} aria-hidden /> Sign in
         </button>
-        <button type="button" className="btn btn--ghost btn--block" onClick={continueAsGuest}>
-          Continue without signing in
-        </button>
-        <p className="muted small center">Local sign-in on this computer only. Nothing is sent anywhere.</p>
+        {onClose ? (
+          <button type="button" className="btn btn--ghost btn--block" onClick={onClose}>
+            Cancel
+          </button>
+        ) : (
+          <button type="button" className="btn btn--ghost btn--block" onClick={continueAsGuest}>
+            Continue without signing in
+          </button>
+        )}
+        <p className="muted small center">Checked on this device only. Nothing is sent anywhere.</p>
       </form>
     </div>
   )

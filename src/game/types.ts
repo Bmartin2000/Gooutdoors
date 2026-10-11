@@ -152,6 +152,8 @@ export interface WalkSummary {
   rejectedFixes: number
   verified: boolean
   thresholds: { minMinutes: number; minDistanceM: number }
+  /** Set when an admin skipped the walk on the phone: not GPS-verified, labelled everywhere. */
+  override?: 'admin'
 }
 
 export type EvidenceStatus =
@@ -179,6 +181,8 @@ export interface MissionEvidence {
   walkId?: string
   /** Metres from the walk's start when the photo was taken (derived, no coordinates). */
   distanceFromStartM?: number
+  /** Approved by an admin on the phone: accepted at the desk without the AI check, labelled. */
+  adminApproved?: boolean
   image: Blob
   mimeType: string
   width: number

@@ -290,6 +290,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
         await store.putEvidence(photoToEvidence(p, 'lan'))
         newPhotos++
       }
+      // Photos an admin approved on the phone are accepted without the AI check (and labelled).
+      for (const p of bundle.photos.filter((x) => x.adminApproved)) {
+        const item = await store.getEvidence(p.id)
+        if (!item || item.status === 'verified') continue
+        await mutate((prof, keys) => eco.applyPhoto(prof, keys, item), {
+          id: item.id,
+          patch: { status: 'verified', result: admin.ADMIN_PHOTO_RESULT, model: 'admin-override', verifiedAt: new Date().toISOString() },
+        })
+      }
       await refreshEvidence()
       const walk = bundle.walk
       const photoLine = newPhotos ? [`${newPhotos} photo${newPhotos > 1 ? 's' : ''} ready for your local AI.`] : []
@@ -299,9 +308,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
           if (settingsRef.current.sound) playChime('reward')
           say('You’re back! I can feel the fresh air from here. Energy is full again.', 'reward')
           setCelebration({
-            eyebrow: 'Walk verified by GPS',
+            eyebrow: walk.override === 'admin' ? 'Admin override · walk skipped on phone' : 'Walk verified by GPS',
             title: `+${res.ledger.tokens} 🌿   +${res.ledger.xp} XP`,
-            lines: [`${Math.round(walk.durationMin)} min outside, up to ${walk.maxDistanceM} m from where you started.`, 'Energy fully restored.', ...photoLine],
+            lines: [
+              walk.override === 'admin' ? 'Not GPS-verified — skipped by admin on the phone.' : `${Math.round(walk.durationMin)} min outside, up to ${walk.maxDistanceM} m from where you started.`,
+              'Energy fully restored.',
+              ...photoLine,
+            ],
             cta: newPhotos ? { label: 'Verify photos', app: 'outside' } : { label: 'Back to work', app: 'inbox' },
           })
           return

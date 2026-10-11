@@ -1,16 +1,15 @@
 /**
- * Optional local sign-in for the desk. Configured only when .env.local provides a salted
- * password hash (see scripts/set-admin.mjs); the public build has no admin at all.
- * This is a convenience gate for testing on your own machine — not a security boundary.
+ * Optional admin sign-in (desk and phone app). Configured by scripts/set-admin.mjs, which
+ * stores only a PBKDF2-SHA256 hash (600,000 iterations). In the phone app that hash is part
+ * of public JavaScript, so it is deliberately slow to brute-force — use a password that is
+ * not used anywhere else. This unlocks test overrides in a local game; it is not security.
  */
-// The public phone-app build (mode "pages") never contains admin config, even if a local
-// .env.local exists: the constant MODE check lets the bundler drop these values entirely.
-const PUBLIC_BUILD = import.meta.env.MODE === 'pages'
+const ITERATIONS = 600_000
 // One or more accepted usernames, comma-separated (e.g. a spelling alias).
-const USERS = PUBLIC_BUILD ? [] : (import.meta.env.VITE_ADMIN_USER ?? '').toLowerCase().split(',').map((u) => u.trim()).filter(Boolean)
+const USERS = (import.meta.env.VITE_ADMIN_USER ?? '').toLowerCase().split(',').map((u) => u.trim()).filter(Boolean)
 const USER = USERS[0] ?? ''
-const SALT = PUBLIC_BUILD ? '' : (import.meta.env.VITE_ADMIN_SALT ?? '')
-const HASH = PUBLIC_BUILD ? '' : (import.meta.env.VITE_ADMIN_HASH ?? '')
+const SALT = import.meta.env.VITE_ADMIN_SALT ?? ''
+const HASH = import.meta.env.VITE_ADMIN_HASH ?? ''
 const SESSION_KEY = 'afk-session'
 
 export const loginConfigured = !!(USER && SALT && HASH)
@@ -23,10 +22,11 @@ export interface Session {
   key?: string
 }
 
-async function sha256(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text)
-  const digest = await crypto.subtle.digest('SHA-256', data)
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+async function pbkdf2(password: string, salt: string): Promise<string> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(salt), iterations: ITERATIONS }, key, 256)
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 export type SignInError = 'unavailable' | 'insecure' | 'user' | 'password'
@@ -36,7 +36,7 @@ export async function signIn(user: string, password: string): Promise<Session | 
   if (!window.isSecureContext) return 'insecure'
   if (!USERS.includes(user.trim().toLowerCase())) return 'user'
   // Ignore accidental leading/trailing spaces from autofill or mobile keyboards.
-  if ((await sha256(`${SALT}:${password.trim()}`)) !== HASH) return 'password'
+  if ((await pbkdf2(password.trim(), SALT)) !== HASH) return 'password'
   const session: Session = { user: user.trim().toLowerCase(), admin: true, at: new Date().toISOString(), key: HASH.slice(0, 12) }
   saveSession(session)
   return session

@@ -59,6 +59,22 @@ describe('outing import', () => {
   })
 })
 
+describe('admin overrides in outings', () => {
+  it('accepts an admin-skipped walk and an admin-approved photo, both marked', () => {
+    const parsed = parseOuting({
+      ...outing,
+      walk: { ...walk, durationMin: 1, maxDistanceM: 5, override: 'admin' },
+      photos: [{ ...outing.photos[0], adminApproved: true }],
+    })
+    expect(parsed.walk?.override).toBe('admin')
+    expect(parsed.photos[0].adminApproved).toBe(true)
+  })
+
+  it('still rejects an unmarked fake "verified" walk', () => {
+    expect(() => parseOuting({ ...outing, walk: { ...walk, durationMin: 1, maxDistanceM: 5 } })).toThrow(ImportError)
+  })
+})
+
 describe('backup import', () => {
   it('rejects an impossible profile', () => {
     expect(() =>

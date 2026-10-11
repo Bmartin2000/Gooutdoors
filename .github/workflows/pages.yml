@@ -26,6 +26,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build:pages
+        env:
+          # Optional admin login for the phone app: username(s), salt and PBKDF2 hash only.
+          VITE_ADMIN_USER: ${{ vars.VITE_ADMIN_USER }}
+          VITE_ADMIN_SALT: ${{ vars.VITE_ADMIN_SALT }}
+          VITE_ADMIN_HASH: ${{ vars.VITE_ADMIN_HASH }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

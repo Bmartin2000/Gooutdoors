@@ -236,3 +236,34 @@
   color: var(--text);
   background: var(--accent-soft);
 }
+.login--sheet {
+  position: fixed;
+  z-index: 60;
+}
+.admin-bar {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--gold) 60%, transparent);
+  background: var(--gold-soft);
+}
+.admin-bar__title {
+  font-size: var(--text-micro);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.outside__admin-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  padding: 6px;
+}
+.pill--admin {
+  background: var(--gold-soft);
+  color: var(--gold);
+  border-color: transparent;
+}

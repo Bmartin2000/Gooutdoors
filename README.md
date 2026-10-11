@@ -79,22 +79,29 @@ npm run start:lan
 
 Open the desk on that computer at https://127.0.0.1:4173. Accept the warning once, then open **Outside** and scan the QR code with your phone.
 
-### Optional local admin (testing only)
+### Optional admin (testing)
 
 ```bash
-AFK_ADMIN_PASSWORD='your-password' node scripts/set-admin.mjs your-username
+AFK_ADMIN_PASSWORD='your-password' node scripts/set-admin.mjs your-username [--github]
 ```
 
-- This writes a **salted hash** (never the password) to the git-ignored `.env.local`. Restart `npm run dev` afterwards.
-- The desk then shows a sign-in screen. A guest can still continue without signing in.
-- Signed in as admin, the OS gets an **Admin** app that can:
+- This stores a **PBKDF2-SHA256 hash** (600,000 iterations, never the password) in the git-ignored `.env.local`. Restart `npm run dev` afterwards.
+- With `--github`, it also sets the GitHub repository variables, so the phone app gets the same sign-in on its next deploy. Those values end up in public JavaScript, which is why the hash is slow. **Use a password you don't use anywhere else.**
+
+What admin can do:
+
+- **Desk:** a sign-in screen (guests can skip it) and an **Admin** app that can:
   - skip a walk
-  - approve waiting photos without the AI check
+  - approve photos without the AI check
   - complete the active job
   - refill energy, level up, or add tokens and money
-- **Every override is logged as "Admin override"** in the activity feed.
-- The public phone-app build compiles admin out entirely.
-- This is a local convenience gate, not security.
+- **Phone app:** an **Admin** button in the header. Signed in, you can:
+  - skip the current walk, or count a short one anyway
+  - open the photo mission immediately
+  - get photos approved automatically
+
+  The desk accepts all of these without the AI check.
+- **Every override is labelled "Admin override"** in the feed, the celebrations and the outing file. It is never presented as GPS-verified or AI-checked. This is a test convenience, not security.
 
 ## Local AI: what it does and doesn't do
 

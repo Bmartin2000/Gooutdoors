@@ -5,6 +5,8 @@ import { prepareForStorage } from '../ai/image.ts'
 import { useGame } from '../app/GameContext.tsx'
 import { BrandMark } from '../components/Brand.tsx'
 import Toasts from '../components/Toasts.tsx'
+import { loginConfigured } from '../app/auth.ts'
+import LoginScreen from '../desk/LoginScreen.tsx'
 import { getMission, getVariant } from '../content/missions.ts'
 import type { MissionEvidence, PhonePairing, WalkRecord } from '../game/types.ts'
 import { deleteEvidence, listEvidence, loadPairing, putEvidence, savePairing } from '../storage/gamePersistence.ts'
@@ -32,7 +34,9 @@ function Ring({ ratio, children }: { ratio: number; children: React.ReactNode })
 }
 
 export default function OutsidePage() {
-  const { notify } = useGame()
+  const { notify, session, signOut } = useGame()
+  const isAdmin = !!session?.admin
+  const [showLogin, setShowLogin] = useState(false)
   const [params, setParams] = useSearchParams()
   const [pairing, setPairing] = useState<PhonePairing | null>(null)
   const [photos, setPhotos] = useState<MissionEvidence[]>([])
@@ -84,10 +88,11 @@ export default function OutsidePage() {
         source,
         status: 'saved-for-later',
         attempts: 0,
+        ...(isAdmin ? { adminApproved: true } : {}),
       })
       await refreshPhotos()
       w.dismissMission()
-      notify('success', 'Photo saved on this phone. Pocket it — your desk checks it later.')
+      notify('success', isAdmin ? 'Photo saved and approved (admin override). Your desk accepts it without the AI check.' : 'Photo saved on this phone. Pocket it — your desk checks it later.')
     } catch (e) {
       notify('error', e instanceof Error ? e.message : 'Could not save the photo.')
     }
@@ -205,7 +210,19 @@ export default function OutsidePage() {
           AFK<span className="wordmark__ext">.exe</span> <span className="muted">Outside</span>
         </span>
         <span className={`pill ${pairing?.token ? 'pill--ok' : ''}`}>{pairing?.token ? 'Paired with desk' : 'Phone app'}</span>
+        {isAdmin ? (
+          <button type="button" className="pill pill--admin" onClick={signOut} title="Sign out">
+            ADMIN · sign out
+          </button>
+        ) : (
+          loginConfigured && (
+            <button type="button" className="outside__admin-btn" onClick={() => setShowLogin(true)}>
+              Admin
+            </button>
+          )
+        )}
       </header>
+      {showLogin && !isAdmin && <LoginScreen onClose={() => setShowLogin(false)} />}
 
       <input ref={camera} type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" hidden onChange={(e) => { void onFile(e.target.files?.[0], 'camera'); e.target.value = '' }} />
       <input ref={library} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { void onFile(e.target.files?.[0], 'upload'); e.target.value = '' }} />
@@ -250,6 +267,20 @@ export default function OutsidePage() {
             </button>
           )}
           {walkPhotos(w.walk).length > 0 && <p className="muted small center">📷 {walkPhotos(w.walk).length} photo saved for this walk</p>}
+          {isAdmin && (
+            <div className="admin-bar">
+              <span className="admin-bar__title">Admin override</span>
+              <button type="button" className="btn btn--block" onClick={() => void w.skipAsAdmin()}>
+                Skip walk — count it as done
+              </button>
+              {!w.missionDue && (
+                <button type="button" className="btn btn--block" onClick={w.openMission}>
+                  Show the photo mission now
+                </button>
+              )}
+              <p className="muted small">Photos you take are approved automatically. Your desk accepts all of it, labelled “Admin override”.</p>
+            </div>
+          )}
           <button type="button" className="btn btn--xl btn--block" onClick={() => void togglePocket(true)}>
             <Moon size={18} aria-hidden /> Pocket mode
           </button>
@@ -261,7 +292,7 @@ export default function OutsidePage() {
 
       {w.walk?.endedAt && w.walk.summary && (
         <section className="outside__summary">
-          <p className="eyebrow">{w.walk.summary.verified ? 'Walk verified by GPS' : 'Walk recorded'}</p>
+          <p className="eyebrow">{w.walk.summary.override === 'admin' ? 'Admin override · counted as done' : w.walk.summary.verified ? 'Walk verified by GPS' : 'Walk recorded'}</p>
           <h1 className="outside__title">{w.walk.summary.verified ? 'Nice walk.' : 'Not quite a walk yet.'}</h1>
           <dl className="summary-stats">
             <div>
@@ -281,6 +312,11 @@ export default function OutsidePage() {
               <dd>{walkPhotos(w.walk).length}</dd>
             </div>
           </dl>
+          {!w.walk.summary.verified && isAdmin && (
+            <button type="button" className="btn btn--block" onClick={() => void w.skipAsAdmin()}>
+              Count it anyway (admin override)
+            </button>
+          )}
           {!w.walk.summary.verified && (
             <p className="note">
               Needs {w.rules.minMinutes} min and {w.rules.minDistanceM} m with a working GPS fix. Photos still count once your desk checks them.

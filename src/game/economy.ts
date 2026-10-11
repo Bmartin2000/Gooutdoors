@@ -339,7 +339,17 @@ export function applyWalk(profile: PlayerProfile, keys: ReadonlySet<string>, sum
     walksVerified: profile.walksVerified + 1,
     minutesOutside: profile.minutesOutside + Math.round(summary.durationMin),
   }
-  next = { ...next, feed: pushFeed(next, 'walk', `Walk verified: ${Math.round(summary.durationMin)} min, ${Math.round(summary.maxDistanceM)} m out. +${tokens} 🌿 +${xp} XP, energy full.`, now) }
+  next = {
+    ...next,
+    feed: pushFeed(
+      next,
+      'walk',
+      summary.override === 'admin'
+        ? `Admin override (phone): walk skipped, not GPS-verified. +${tokens} 🌿 +${xp} XP, energy full.`
+        : `Walk verified: ${Math.round(summary.durationMin)} min, ${Math.round(summary.maxDistanceM)} m out. +${tokens} 🌿 +${xp} XP, energy full.`,
+      now,
+    ),
+  }
   if (after > before) next = { ...next, feed: pushFeed(next, 'level', `Level up: you are now level ${after}.`, now) }
   return { profile: next, ledger: { key, kind: 'walk', money: 0, tokens, xp, at: now.toISOString() }, alreadyGranted: false, levelUp: after > before ? after : null }
 }

@@ -150,6 +150,26 @@ export function useWalk(demo: boolean) {
     return done
   }, [refreshHistory, releaseWakeLock, rules, save, stopWatching])
 
+  /** Admin override: end the walk now and count it as done (labelled, not GPS-verified). */
+  const skipAsAdmin = useCallback(async () => {
+    let current = walkRef.current
+    if (!current) return
+    if (current.endedAt && current.summary) {
+      const s = { ...current.summary, verified: true, override: 'admin' as const }
+      await save({ ...current, summary: s })
+      await refreshHistory()
+      return
+    }
+    stopWatching()
+    await releaseWakeLock()
+    current = walkRef.current!
+    const endedAt = Date.now()
+    const summary = { ...summarize(current, rules, endedAt), verified: true, override: 'admin' as const }
+    await save({ ...current, endedAt: new Date(endedAt).toISOString(), summary })
+    setMissionDue(false)
+    await refreshHistory()
+  }, [refreshHistory, releaseWakeLock, rules, save, stopWatching])
+
   const markSent = useCallback(
     async (id: string) => {
       const all = await listWalks()
@@ -204,6 +224,7 @@ export function useWalk(demo: boolean) {
     openMission: () => setMissionDue(true),
     start,
     end,
+    skipAsAdmin,
     markSent,
     closeSummary,
     requestWakeLock,

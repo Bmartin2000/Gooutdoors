@@ -24,6 +24,7 @@ const walkSummary = z.object({
   rejectedFixes: z.number().int().min(0).max(100_000),
   verified: z.boolean(),
   thresholds: z.object({ minMinutes: z.number().min(0), minDistanceM: z.number().min(0) }),
+  override: z.literal('admin').optional(),
 })
 
 const photo = z.object({
@@ -32,6 +33,7 @@ const photo = z.object({
   variantId: z.string().min(1).max(60),
   walkId: z.string().max(80).optional(),
   distanceFromStartM: z.number().min(0).max(200_000).optional(),
+  adminApproved: z.boolean().optional(),
   capturedAt: isoDate,
   width: z.number().int().positive().max(10000),
   height: z.number().int().positive().max(10000),
@@ -53,7 +55,7 @@ export class ImportError extends Error {}
 
 /** A walk claiming verification must actually meet the thresholds it carries. */
 export function consistentWalk(w: WalkSummary): boolean {
-  if (!w.verified) return true
+  if (!w.verified || w.override === 'admin') return true
   return w.fixes >= 3 && w.durationMin >= w.thresholds.minMinutes && w.maxDistanceM >= w.thresholds.minDistanceM && w.thresholds.minMinutes >= 2 && w.thresholds.minDistanceM >= 30
 }
 
@@ -77,6 +79,7 @@ export async function buildOuting(walk: WalkSummary | null, photos: MissionEvide
         variantId: e.variantId,
         walkId: e.walkId,
         distanceFromStartM: e.distanceFromStartM,
+        adminApproved: e.adminApproved,
         capturedAt: e.capturedAt,
         width: e.width,
         height: e.height,
@@ -94,6 +97,7 @@ export function photoToEvidence(p: OutingBundle['photos'][number], source: 'impo
     variantId: p.variantId,
     walkId: p.walkId,
     distanceFromStartM: p.distanceFromStartM,
+    adminApproved: p.adminApproved,
     image: base64ToBlob(p.imageBase64, p.mimeType),
     mimeType: p.mimeType,
     width: p.width,

@@ -68,6 +68,8 @@ export interface JobOffer {
   energyCost: number
   arrivedAt: string
   expiresAt: string
+  /** One per day: bigger pay, announced by Moss. */
+  featured?: boolean
 }
 
 export interface ActiveJob {
@@ -99,6 +101,8 @@ export interface PlayerProfile {
   minutesOutside: number
   /** Recent events for the OS feed. */
   feed: FeedItem[]
+  /** YYYY-MM-DD of the last featured contract. */
+  lastFeaturedDay?: string
 }
 
 export interface FeedItem {

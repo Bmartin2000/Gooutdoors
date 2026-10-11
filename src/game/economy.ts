@@ -4,6 +4,7 @@
  * unique ledger keys, so nothing can be granted twice.
  */
 import { CHALLENGES, CLIENTS, getChallenge } from '../content/challenges.ts'
+import { newGeneratedId } from '../content/generators.ts'
 import { getMission } from '../content/missions.ts'
 import { getShopItem } from '../content/shop.ts'
 import { levelForXp } from './levels.ts'
@@ -55,22 +56,35 @@ function pushFeed(profile: PlayerProfile, kind: FeedItem['kind'], text: string, 
 
 /* ───────────── jobs ───────────── */
 
-export function offerFor(challenge: Challenge, now: Date, rng: () => number, intervalMin: number, repeat = false): JobOffer {
+export function offerFor(challenge: Challenge, now: Date, rng: () => number, intervalMin: number, repeat = false, featured = false): JobOffer {
   const client = CLIENTS[Math.floor(rng() * CLIENTS.length)]
   const basePay = 60 * challenge.difficulty + Math.round((rng() * 40) / 5) * 5
-  const lifetimeMin = Math.max(180, intervalMin * 6)
+  const lifetimeMin = featured ? 24 * 60 : Math.max(180, intervalMin * 6)
+  const k = featured ? 1.5 : repeat ? 0.6 : 1
   return {
     id: makeId('job', now, rng),
     challengeId: challenge.id,
     client,
     title: challenge.title,
     pitch: challenge.brief,
-    pay: repeat ? Math.round(basePay * 0.6) : basePay,
-    xp: Math.round(40 * challenge.difficulty * (repeat ? 0.5 : 1)),
+    pay: Math.round((basePay * k) / 5) * 5,
+    xp: Math.round(40 * challenge.difficulty * (featured ? 1.5 : repeat ? 0.5 : 1)),
     energyCost: 15 + 10 * challenge.difficulty,
     arrivedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + lifetimeMin * 60_000).toISOString(),
+    ...(featured ? { featured: true } : {}),
   }
+}
+
+export const dayKey = (d: Date) => d.toISOString().slice(0, 10)
+
+/** A fresh procedural job: new app, story, names and data every time. */
+export function generatedChallenge(profile: PlayerProfile, now: Date, rng: () => number, tierBoost = 0): Challenge {
+  const level = levelForXp(profile.xp).level
+  const stretch = rng() < 0.25 ? 1 : 0
+  const tier = Math.min(3, Math.max(1, level + stretch + tierBoost))
+  const seed = `${dayKey(now).replace(/-/g, '')}-${Math.floor(rng() * 1e9).toString(36)}`
+  return getChallenge(newGeneratedId(rng, seed, tier))!
 }
 
 export function createProfile(now = new Date(), rng: () => number = Math.random): PlayerProfile {
@@ -120,6 +134,8 @@ export function eligibility(profile: PlayerProfile, challenge: Challenge): Eligi
 export function pickChallenge(profile: PlayerProfile, rng: () => number): { challenge: Challenge; repeat: boolean } | null {
   const taken = new Set([...profile.board.map((o) => o.challengeId), profile.activeJob?.offer.challengeId])
   const fresh = CHALLENGES.filter((c) => !taken.has(c.id) && !profile.completedChallenges.includes(c.id))
+  // Half of all offers are freshly generated, so there is always something new.
+  if (rng() < 0.5 || !fresh.length) return { challenge: generatedChallenge(profile, new Date(), rng), repeat: false }
   if (fresh.length) {
     const doable = fresh.filter((c) => eligibility(profile, c).ok)
     const stretch = fresh.filter((c) => !eligibility(profile, c).ok)
@@ -164,8 +180,22 @@ export function refreshBoard(
     next = { ...next, board: [...next.board, offer] }
   }
   if (due > 0) next = { ...next, lastArrivalAt: new Date(Date.parse(profile.lastArrivalAt) + due * intervalMin * 60_000).toISOString() }
-  for (const offer of arrived) next = { ...next, feed: pushFeed(next, 'job-arrived', `New offer from ${offer.client}: ${offer.title}`, now) }
-  if (!arrived.length && !expired) return { profile, arrived, expired }
+  // Today's featured contract: one per day, bigger pay.
+  const today = dayKey(now)
+  if (next.lastFeaturedDay !== today) {
+    const challenge = generatedChallenge(next, now, rng, 0)
+    const offer = offerFor(challenge, now, rng, intervalMin, false, true)
+    let board = next.board
+    if (board.length >= MAX_BOARD) {
+      // Make room by dropping the oldest regular offer.
+      const oldest = [...board].filter((o) => !o.featured).sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt))[0]
+      board = board.filter((o) => o !== oldest)
+    }
+    arrived.push(offer)
+    next = { ...next, board: [offer, ...board], lastFeaturedDay: today }
+  }
+  for (const offer of arrived) next = { ...next, feed: pushFeed(next, 'job-arrived', `${offer.featured ? 'Today’s contract' : 'New offer'} from ${offer.client}: ${offer.title}`, now) }
+  if (!arrived.length && !expired && next === profile) return { profile, arrived, expired }
   return { profile: next, arrived, expired }
 }
 

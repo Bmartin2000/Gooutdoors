@@ -93,6 +93,33 @@ function PhotoCard({ item }: { item: MissionEvidence }) {
   )
 }
 
+/** The installable phone app (static, HTTPS, works offline after first load). */
+const PHONE_APP_URL: string = import.meta.env.VITE_PHONE_APP_URL || 'https://bmartin2000.github.io/Gooutdoors/outside'
+
+function InstallQR() {
+  const { settings } = useGame()
+  const [svg, setSvg] = useState('')
+  const link = `${PHONE_APP_URL}${settings.demoWalk ? '?demo=1' : ''}`
+  useEffect(() => {
+    QRCode.toString(link, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111312', light: '#f6f3ec' } })
+      .then(setSvg)
+      .catch(() => setSvg(''))
+  }, [link])
+  if (!svg) return null
+  return (
+    <div className="qr">
+      <img src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`} alt="QR code to install the AFK.exe phone app" width={132} height={132} />
+      <div className="stack-2">
+        <p className="small">
+          <strong>Install the phone app.</strong> Open it once, then “Add to Home screen”. It works offline: GPS walks, mission buzz, photos.
+        </p>
+        <code className="small break">{link}</code>
+        <p className="muted small">Walks come back as a shared file → Import outing file below.</p>
+      </div>
+    </div>
+  )
+}
+
 function PhoneQR() {
   const { settings } = useGame()
   const [pairing, setPairing] = useState<Pairing | null>(null)
@@ -181,6 +208,9 @@ export default function OutsideApp() {
             <Smartphone size={16} aria-hidden />
             <h3 className="section-title">Your phone</h3>
           </div>
+          <InstallQR />
+          <div className="divider" />
+          <p className="eyebrow">Or on the same Wi-Fi (sends walks straight to this desk)</p>
           <PhoneQR />
           <div className="divider" />
           <p className="small">

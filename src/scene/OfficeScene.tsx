@@ -224,47 +224,119 @@ function HangingPlant() {
 }
 
 
-function Bot({ color, stage, reduced }: { color: string; stage: number; reduced: boolean }) {
-  const ref = useRef<THREE.Group>(null)
-  const eye = useLerpColor(color, reduced)
-  const eyeMat = useRef<THREE.MeshStandardMaterial>(null)
-  useFrame(({ clock, pointer }) => {
-    if (eyeMat.current) {
-      eyeMat.current.color.copy(eye)
-      eyeMat.current.emissive.copy(eye)
+/**
+ * Moss — the office companion. A small hovering robot with a planter built into its head.
+ * The plant grows with the office's nature stage. When Moss has news it turns to you,
+ * hops, and its eyes brighten; otherwise it idles, blinks and watches the monitor.
+ */
+function Bot({ color, stage, reduced, talking }: { color: string; stage: number; reduced: boolean; talking: boolean }) {
+  const root = useRef<THREE.Group>(null)
+  const head = useRef<THREE.Group>(null)
+  const sprout = useRef<THREE.Group>(null)
+  const eyes = useRef<THREE.Group>(null)
+  const eyeColor = useLerpColor(color, reduced)
+  const eyeMats = useRef<THREE.MeshStandardMaterial[]>([])
+  const glow = useRef<THREE.MeshBasicMaterial>(null)
+
+  useFrame(({ clock, camera }, dt) => {
+    const t = clock.elapsedTime
+    for (const m of eyeMats.current) {
+      if (!m) continue
+      m.color.copy(eyeColor)
+      m.emissive.copy(eyeColor)
+      m.emissiveIntensity = talking ? 2.4 + Math.sin(t * 9) * 0.6 : 1.4
     }
-    if (!ref.current || reduced) return
-    ref.current.position.y = 1.02 + Math.sin(clock.elapsedTime * 1.6) * 0.025
-    ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, -0.5 + pointer.x * 0.5, 0.05)
+    if (glow.current) glow.current.opacity = talking ? 0.5 + Math.sin(t * 6) * 0.15 : 0.22
+    if (!root.current || !head.current) return
+    if (reduced) return
+    // hover + hop when talking
+    const hop = talking ? Math.abs(Math.sin(t * 5)) * 0.05 : 0
+    root.current.position.y = 1.02 + Math.sin(t * 1.6) * 0.02 + hop
+    // face the camera when talking, otherwise glance at the monitor
+    const targetYaw = talking
+      ? Math.atan2(camera.position.x - root.current.position.x, camera.position.z - root.current.position.z)
+      : -0.9 + Math.sin(t * 0.3) * 0.15
+    root.current.rotation.y = THREE.MathUtils.lerp(root.current.rotation.y, targetYaw, Math.min(1, dt * 4))
+    head.current.rotation.z = Math.sin(t * 0.9) * 0.05
+    if (sprout.current) sprout.current.rotation.z = Math.sin(t * (talking ? 7 : 1.3)) * (talking ? 0.18 : 0.06)
+    // blink
+    if (eyes.current) eyes.current.scale.y = (t % 4.2) < 0.12 ? 0.15 : 1
   })
+
+  const leafCount = 2 + stage * 2
   return (
-    <group ref={ref} position={[1.07, 1.02, -2.32]} rotation={[0, -0.5, 0]} scale={0.8}>
-      <mesh castShadow>
-        <sphereGeometry args={[0.12, 32, 24]} />
-        <meshStandardMaterial color="#e9e6df" roughness={0.35} metalness={0.05} />
+    <group ref={root} position={[1.07, 1.02, -2.32]} rotation={[0, -0.9, 0]} scale={0.85}>
+      {/* hover glow on the desk */}
+      <mesh position={[0, -0.215, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.09, 32]} />
+        <meshBasicMaterial ref={glow} color={color} transparent opacity={0.22} toneMapped={false} />
       </mesh>
-      <mesh position={[0, 0.01, 0.085]} rotation={[0, 0, 0]}>
-        <capsuleGeometry args={[0.035, 0.09, 6, 16]} />
-        <meshStandardMaterial color="#121413" roughness={0.3} />
+      {/* body */}
+      <mesh position={[0, -0.09, 0]} castShadow>
+        <capsuleGeometry args={[0.07, 0.06, 8, 24]} />
+        <meshStandardMaterial color="#e6e2d8" roughness={0.35} />
       </mesh>
-      {[-0.03, 0.03].map((x) => (
-        <mesh key={x} position={[x, 0.015, 0.123]}>
-          <sphereGeometry args={[0.012, 12, 12]} />
-          <meshStandardMaterial ref={x < 0 ? eyeMat : undefined} color={color} emissive={color} emissiveIntensity={1.4} />
+      <mesh position={[0, -0.09, 0.066]}>
+        <circleGeometry args={[0.022, 24]} />
+        <meshStandardMaterial ref={(m) => { if (m) eyeMats.current[2] = m }} color={color} emissive={color} emissiveIntensity={1.2} />
+      </mesh>
+      {/* arms */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 0.085, -0.1, 0.01]} rotation={[0, 0, s * (talking ? 0.9 : 0.25)]} castShadow>
+          <capsuleGeometry args={[0.014, 0.05, 4, 10]} />
+          <meshStandardMaterial color="#cfcabe" roughness={0.4} />
         </mesh>
       ))}
-      <Grow visible={stage >= 1} reduced={reduced} position={[0, 0.115, 0]}>
-        <mesh position={[0, 0.04, 0]}>
-          <cylinderGeometry args={[0.004, 0.004, 0.08, 6]} />
-          <meshStandardMaterial color="#5f8f4f" />
+      {/* head */}
+      <group ref={head} position={[0, 0.04, 0]}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.105, 40, 28]} />
+          <meshStandardMaterial color="#f1eee6" roughness={0.3} />
         </mesh>
-        <Leaf position={[0, 0.08, 0]} rotation={[0.3, 0, -0.8]} scale={0.06} color="#7bb06a" />
-        <Leaf position={[0, 0.07, 0]} rotation={[0.3, 0, 0.8]} scale={0.05} color="#6fa35f" />
-      </Grow>
-      <mesh position={[0, -0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.07, 24]} />
-        <meshBasicMaterial color="#000" transparent opacity={0.25} />
-      </mesh>
+        {/* visor */}
+        <mesh position={[0, -0.005, 0.07]} scale={[1, 0.62, 0.55]}>
+          <sphereGeometry args={[0.085, 32, 20]} />
+          <meshStandardMaterial color="#141716" roughness={0.15} metalness={0.4} />
+        </mesh>
+        <group ref={eyes} position={[0, 0, 0.115]}>
+          {[-0.03, 0.03].map((x, i) => (
+            <mesh key={x} position={[x, 0, 0]}>
+              <capsuleGeometry args={[0.009, 0.012, 4, 10]} />
+              <meshStandardMaterial ref={(m) => { if (m) eyeMats.current[i] = m }} color={color} emissive={color} emissiveIntensity={1.4} toneMapped={false} />
+            </mesh>
+          ))}
+        </group>
+        {/* planter rim + soil in the top of the head */}
+        <mesh position={[0, 0.085, 0]}>
+          <torusGeometry args={[0.045, 0.008, 10, 28]} />
+          <meshStandardMaterial color="#c7b49a" roughness={0.6} />
+        </mesh>
+        <mesh position={[0, 0.086, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.044, 24]} />
+          <meshStandardMaterial color="#3a2a1d" roughness={1} />
+        </mesh>
+        {/* the plant: grows with the office */}
+        <group ref={sprout} position={[0, 0.09, 0]}>
+          <mesh position={[0, 0.04 + stage * 0.012, 0]}>
+            <cylinderGeometry args={[0.004, 0.005, 0.08 + stage * 0.025, 6]} />
+            <meshStandardMaterial color="#5f8f4f" />
+          </mesh>
+          {Array.from({ length: leafCount }, (_, i) => {
+            const a = (i / leafCount) * Math.PI * 2
+            const h = 0.05 + (i % 3) * 0.018 + stage * 0.01
+            return <Leaf key={i} position={[0, h, 0]} rotation={[0.55, a, (i % 2 ? 1 : -1) * 0.7]} scale={0.055 + stage * 0.012} color={LEAF_GREENS[i % LEAF_GREENS.length]} />
+          })}
+        </group>
+        {/* tiny antenna */}
+        <mesh position={[0.07, 0.07, -0.02]} rotation={[0, 0, -0.5]}>
+          <cylinderGeometry args={[0.003, 0.003, 0.05, 6]} />
+          <meshStandardMaterial color="#9a958b" />
+        </mesh>
+        <mesh position={[0.085, 0.095, -0.02]}>
+          <sphereGeometry args={[0.009, 12, 12]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={talking ? 2 : 0.8} toneMapped={false} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -597,7 +669,7 @@ export interface ScreenRect {
   height: number
 }
 
-function CameraRig({ view, reduced, onScreenRect, onSettled }: { view: OfficeView; reduced: boolean; onScreenRect: (r: ScreenRect | null) => void; onSettled: (v: OfficeView) => void }) {
+function CameraRig({ view, reduced, onScreenRect, onSettled, onBotPoint }: { view: OfficeView; reduced: boolean; onScreenRect: (r: ScreenRect | null) => void; onSettled: (v: OfficeView) => void; onBotPoint: (p: { x: number; y: number } | null) => void }) {
   const { camera, size } = useThree()
   const target = useRef(VIEWS[view].target.clone())
   const settled = useRef<OfficeView | null>(null)
@@ -605,6 +677,8 @@ function CameraRig({ view, reduced, onScreenRect, onSettled }: { view: OfficeVie
   const corners = useMemo(() => [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], [])
   const roomPos = useMemo(() => new THREE.Vector3(), [])
   const sway = useMemo(() => new THREE.Vector3(), [])
+  const botHead = useMemo(() => new THREE.Vector3(), [])
+  const lastBot = useRef('')
 
   useFrame(({ pointer }) => {
     const cam = camera as THREE.PerspectiveCamera
@@ -630,6 +704,16 @@ function CameraRig({ view, reduced, onScreenRect, onSettled }: { view: OfficeVie
       onSettled(view)
     } else if (!done && settled.current === view) {
       settled.current = null
+    }
+
+    // Where Moss's head is on screen, for its speech bubble.
+    botHead.set(1.07, 1.2, -2.32).project(cam)
+    const bx = ((botHead.x + 1) / 2) * size.width
+    const by = ((1 - botHead.y) / 2) * size.height
+    const bkey = done ? `${Math.round(bx)}:${Math.round(by)}` : 'moving'
+    if (bkey !== lastBot.current) {
+      lastBot.current = bkey
+      onBotPoint(done && botHead.z < 1 ? { x: bx, y: by } : null)
     }
 
     // Project the screen's corners to CSS pixels so the DOM OS sits exactly on the monitor.
@@ -669,6 +753,9 @@ function CameraRig({ view, reduced, onScreenRect, onSettled }: { view: OfficeVie
 
 export interface OfficeSceneProps {
   view: OfficeView
+  /** Moss has something to say: turns to you, hops, eyes glow. */
+  talking: boolean
+  onBotPoint: (p: { x: number; y: number } | null) => void
   natureStage: Stage
   upgrades: string[]
   reducedMotion: boolean
@@ -676,7 +763,7 @@ export interface OfficeSceneProps {
   onSettled: (v: OfficeView) => void
 }
 
-export default function OfficeScene({ view, natureStage, upgrades, reducedMotion, onScreenRect, onSettled }: OfficeSceneProps) {
+export default function OfficeScene({ view, talking, onBotPoint, natureStage, upgrades, reducedMotion, onScreenRect, onSettled }: OfficeSceneProps) {
   const palette = PALETTES[natureStage]
   const has = (id: string) => upgrades.includes(id)
   return (
@@ -690,12 +777,12 @@ export default function OfficeScene({ view, natureStage, upgrades, reducedMotion
       }}
       aria-hidden
     >
-      <CameraRig view={view} reduced={reducedMotion} onScreenRect={onScreenRect} onSettled={onSettled} />
+      <CameraRig view={view} reduced={reducedMotion} onScreenRect={onScreenRect} onSettled={onSettled} onBotPoint={onBotPoint} />
       <Lights palette={palette} reduced={reducedMotion} stage={natureStage} />
       <Room palette={palette} reduced={reducedMotion} />
       <Desk showChair={view === 'room'} />
       <MainMonitor glow={palette.screen} />
-      <Bot color={palette.bot} stage={natureStage} reduced={reducedMotion} />
+      <Bot color={palette.bot} stage={natureStage} reduced={reducedMotion} talking={talking} />
 
       <Grow visible={has('desk-lamp')} reduced={reducedMotion}>
         <DeskLamp on={has('desk-lamp')} />

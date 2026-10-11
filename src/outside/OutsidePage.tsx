@@ -47,8 +47,9 @@ export default function OutsidePage() {
   useEffect(() => {
     void (async () => {
       const token = params.get('pair')
-      if (token) {
-        const next: PhonePairing = { token, receivedAt: new Date().toISOString(), demo: params.get('demo') === '1' }
+      if (token || params.has('demo')) {
+        const prev = await loadPairing()
+        const next: PhonePairing = { token: token ?? prev?.token ?? null, receivedAt: new Date().toISOString(), demo: params.get('demo') === '1' }
         await savePairing(next)
         setPairing(next)
         setParams({}, { replace: true })
@@ -203,7 +204,7 @@ export default function OutsidePage() {
         <span className="outside__brand">
           AFK<span className="wordmark__ext">.exe</span> <span className="muted">Outside</span>
         </span>
-        <span className={`pill ${pairing?.token ? 'pill--ok' : ''}`}>{pairing?.token ? 'Paired with desk' : 'Not paired'}</span>
+        <span className={`pill ${pairing?.token ? 'pill--ok' : ''}`}>{pairing?.token ? 'Paired with desk' : 'Phone app'}</span>
       </header>
 
       <input ref={camera} type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" hidden onChange={(e) => { void onFile(e.target.files?.[0], 'camera'); e.target.value = '' }} />
@@ -285,13 +286,26 @@ export default function OutsidePage() {
               Needs {w.rules.minMinutes} min and {w.rules.minDistanceM} m with a working GPS fix. Photos still count once your desk checks them.
             </p>
           )}
-          <p className="muted small">{w.walk.sentAt ? 'Sent to your desk.' : 'Back on Wi-Fi? Send it to your desk to collect your rewards there.'}</p>
-          <button type="button" className="btn btn--primary btn--xl btn--block" disabled={sending} onClick={() => void send(w.walk!)}>
-            <Send size={18} aria-hidden /> {sending ? 'Sending…' : 'Send to my desk'}
-          </button>
-          <button type="button" className="btn btn--block" onClick={() => void exportFile(w.walk!)}>
-            <Download size={15} aria-hidden /> Export file instead
-          </button>
+          {pairing?.token ? (
+            <>
+              <p className="muted small">{w.walk.sentAt ? 'Sent to your desk.' : 'Back on Wi-Fi? Send it to your desk to collect your rewards there.'}</p>
+              <button type="button" className="btn btn--primary btn--xl btn--block" disabled={sending} onClick={() => void send(w.walk!)}>
+                <Send size={18} aria-hidden /> {sending ? 'Sending…' : 'Send to my desk'}
+              </button>
+              <button type="button" className="btn btn--block" onClick={() => void exportFile(w.walk!)}>
+                <Download size={15} aria-hidden /> Share as a file instead
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="muted small">
+                {w.walk.sentAt ? 'Shared.' : 'Share the walk with your computer (AirDrop, Nearby Share, e-mail to yourself), then on the desk open Outside › Import outing file.'}
+              </p>
+              <button type="button" className="btn btn--primary btn--xl btn--block" onClick={() => void exportFile(w.walk!)}>
+                <Send size={18} aria-hidden /> Share with my desk
+              </button>
+            </>
+          )}
           <button type="button" className="btn btn--block btn--ghost" onClick={w.closeSummary}>
             Done
           </button>
@@ -310,9 +324,11 @@ export default function OutsidePage() {
                   {h.summary?.verified ? ' ✓' : ''}
                 </span>
                 <span className="row-2">
-                  <button type="button" className="btn btn--sm btn--primary" onClick={() => void send(h)} aria-label="Send to desk">
-                    <Send size={13} />
-                  </button>
+                  {pairing?.token && (
+                    <button type="button" className="btn btn--sm btn--primary" onClick={() => void send(h)} aria-label="Send to desk">
+                      <Send size={13} />
+                    </button>
+                  )}
                   <button type="button" className="btn btn--sm" onClick={() => void exportFile(h)} aria-label="Export file">
                     <Download size={13} />
                   </button>

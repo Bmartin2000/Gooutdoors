@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { useGame } from '../app/GameContext.tsx'
 import { usePreferences } from '../app/usePreferences.ts'
 import type { OfficeView, ScreenRect, Stage } from '../scene/OfficeScene.tsx'
+import MossBubble from './MossBubble.tsx'
 import OS from './OS.tsx'
 
 const OfficeScene = lazy(() => import('../scene/OfficeScene.tsx'))
@@ -44,7 +45,8 @@ export function natureStage(upgrades: string[]): Stage {
 }
 
 export default function DeskPage() {
-  const { profile, settings } = useGame()
+  const { profile, settings, moss } = useGame()
+  const [botPoint, setBotPoint] = useState<{ x: number; y: number } | null>(null)
   const { reducedMotion } = usePreferences(settings)
   const [webgl, setWebgl] = useState(hasWebGL)
   const [view, setView] = useState<OfficeView>('desk')
@@ -60,6 +62,7 @@ export default function DeskPage() {
 
   const onScreenRect = useCallback((r: ScreenRect | null) => setRect(r), [])
   const onSettled = useCallback((v: OfficeView) => setSettled(v), [])
+  const onBotPoint = useCallback((p: { x: number; y: number } | null) => setBotPoint(p), [])
 
   const full = !webgl || viewport.w < MIN_VW || viewport.h < MIN_VH
   const mounted = !full && view === 'desk' && settled === 'desk' && rect !== null
@@ -78,6 +81,8 @@ export default function DeskPage() {
             <Suspense fallback={null}>
               <OfficeScene
                 view={full ? 'room' : view}
+                talking={!!moss}
+                onBotPoint={onBotPoint}
                 natureStage={natureStage(profile.upgrades)}
                 upgrades={profile.upgrades}
                 reducedMotion={reducedMotion}
@@ -96,6 +101,8 @@ export default function DeskPage() {
           onLookAround={webgl && !full ? lookAround : undefined}
         />
       )}
+
+      {view === 'desk' && <MossBubble anchor={mounted ? botPoint : null} />}
 
       {view === 'room' && (
         <div className="room-hud">

@@ -52,8 +52,13 @@ describe('job board', () => {
     const p = createProfile(T0, seq())
     const twoHours = new Date(T0.getTime() + 2 * 3_600_000 + 1000)
     const { profile, arrived } = refreshBoard(p, twoHours, 60, seq())
-    expect(arrived).toHaveLength(2)
-    expect(profile.board).toHaveLength(4)
+    // two hourly offers + today's featured contract
+    expect(arrived).toHaveLength(3)
+    expect(arrived.filter((o) => o.featured)).toHaveLength(1)
+    expect(profile.board).toHaveLength(5)
+    // only one featured contract per day
+    const again = refreshBoard(profile, new Date(twoHours.getTime() + 3_600_000), 60, seq())
+    expect(again.arrived.some((o) => o.featured)).toBe(false)
     const muchLater = refreshBoard(profile, new Date(T0.getTime() + 40 * 3_600_000), 60, seq())
     expect(muchLater.profile.board.length).toBeLessThanOrEqual(MAX_BOARD)
     expect(muchLater.expired).toBeGreaterThan(0)

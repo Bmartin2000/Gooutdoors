@@ -4,6 +4,7 @@
  * nothing here executes user-provided or model-provided code.
  */
 import type { CaseResult, Challenge, SkillId } from '../game/types.ts'
+import { generateChallenge } from './generators.ts'
 
 export const SKILLS: { id: SkillId; name: string; short: string }[] = [
   { id: 'debugging', name: 'Debugging', short: 'DBG' },
@@ -435,6 +436,7 @@ export const isLeapYear = (year: number) =>
 ]
 
 export function getChallenge(id: string): Challenge | undefined {
+  if (id.startsWith('gen:')) return generateChallenge(id)
   return CHALLENGES.find((c) => c.id === id)
 }
 

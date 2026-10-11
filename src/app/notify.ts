@@ -14,7 +14,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 /** Shows a system notification while AFK.exe is open (even in a background tab). */
 export async function showSystemNotification(title: string, body: string, tag: string) {
   if (!notificationsSupported() || Notification.permission !== 'granted') return
-  const options: NotificationOptions = { body, tag, icon: '/icon-192.png', badge: '/icon-192.png' }
+  const options: NotificationOptions = { body, tag, icon: `${import.meta.env.BASE_URL}icon-192.png`, badge: `${import.meta.env.BASE_URL}icon-192.png` }
   try {
     const reg = navigator.serviceWorker?.controller ? await navigator.serviceWorker.ready : null
     if (reg) await reg.showNotification(title, options)

@@ -21,6 +21,13 @@ export interface Toast {
 
 export type OSApp = 'inbox' | 'work' | 'skills' | 'shop' | 'outside' | 'tools'
 
+export interface MossLine {
+  id: number
+  text: string
+  mood: 'job' | 'reward' | 'warn' | 'hello'
+  cta?: { label: string; app: OSApp }
+}
+
 export interface Celebration {
   eyebrow: string
   title: string
@@ -36,6 +43,8 @@ interface GameValue {
   progress: Record<string, ChatProgress>
   toasts: Toast[]
   celebration: Celebration | null
+  moss: MossLine | null
+  dismissMoss: () => void
   isAIHost: boolean
   app: OSApp
   openApp: (app: OSApp) => void
@@ -76,6 +85,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [celebration, setCelebration] = useState<Celebration | null>(null)
   const [app, setApp] = useState<OSApp>('inbox')
+  const [moss, setMoss] = useState<MossLine | null>(null)
+  const mossSeq = useRef(0)
+  const mossTimer = useRef<number | undefined>(undefined)
+  const say = useCallback((text: string, mood: MossLine['mood'], cta?: MossLine['cta'], ms = 12_000) => {
+    const id = ++mossSeq.current
+    setMoss({ id, text, mood, cta })
+    window.clearTimeout(mossTimer.current)
+    mossTimer.current = window.setTimeout(() => setMoss((m) => (m?.id === id ? null : m)), ms)
+  }, [])
+  const dismissMoss = useCallback(() => setMoss(null), [])
   const controllers = useRef(new Map<string, AbortController>())
   const toastSeq = useRef(0)
   const settingsRef = useRef(settings)
@@ -126,8 +145,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setSettings(s)
       setEvidence(await store.listEvidence())
       setReady(true)
+      const h = new Date().getHours()
+      const greet = h < 12 ? 'Good morning' : h < 18 ? 'Hi' : 'Good evening'
+      window.setTimeout(() => say(p.board.length ? `${greet}! ${p.board.length} job offer${p.board.length > 1 ? 's are' : ' is'} waiting in your inbox.` : `${greet}! The inbox is quiet — perfect time for a walk.`, 'hello', { label: 'Open inbox', app: 'inbox' }, 9000), 1800)
     })()
-  }, [])
+  }, [say])
 
   const celebrateLevel = useCallback((level: number) => {
     const tool = TOOLS.find((t) => t.minLevel === level)
@@ -144,12 +166,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!ready || !isAIHost) return
     const tick = async () => {
       let arrived: string[] = []
+      let featured: { client: string; title: string; pay: number } | null = null
       await mutate((p) => {
         const regen = eco.applyEnergyRegen(p, new Date())
         const out = eco.refreshBoard(regen, new Date(), settingsRef.current.jobEveryMin)
         arrived = out.arrived.map((o) => `${o.client}: ${o.title}`)
+        const f = out.arrived.find((o) => o.featured)
+        if (f) featured = { client: f.client, title: f.title, pay: f.pay }
         return { profile: out.profile, ledger: null }
       })
+      if (featured) {
+        const f = featured as { client: string; title: string; pay: number }
+        say(`Today’s contract just landed: ${f.client} pays ${f.pay} for “${f.title}”.`, 'job', { label: 'Take a look', app: 'inbox' })
+      } else if (arrived.length) {
+        say(arrived.length === 1 ? `New job — ${arrived[0]}. Want it?` : `${arrived.length} new jobs came in.`, 'job', { label: 'Open inbox', app: 'inbox' })
+      }
       if (arrived.length) {
         const text = arrived.length === 1 ? `New job offer — ${arrived[0]}` : `${arrived.length} new job offers in your inbox`
         notify('info', text)
@@ -167,7 +198,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [isAIHost, mutate, notify, ready])
+  }, [isAIHost, mutate, notify, ready, say])
 
   /* ── jobs ── */
   const accept = useCallback(
@@ -198,10 +229,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (out?.finished === 'done') {
         if (settingsRef.current.sound) playChime('reward')
         if (out.levelUp) celebrateLevel(out.levelUp)
+        else if (out.profile.energy < 30) say('Nice work. I’m running low on energy though — a walk outside fills us right back up.', 'warn', { label: 'Go outside', app: 'outside' })
+        else say(`Paid! That’s ${out.profile.money.toLocaleString('en')} in the bank.`, 'reward')
+      } else if (out?.finished === 'failed') {
+        say('That one slipped away. Every job teaches something — want another?', 'warn', { label: 'Open inbox', app: 'inbox' })
       }
       return out
     },
-    [celebrateLevel, mutate],
+    [celebrateLevel, mutate, say],
   )
 
   const hint = useCallback(async () => {
@@ -246,6 +281,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const res = await mutate((p, keys) => eco.applyWalk(p, keys, walk))
         if (res.ledger) {
           if (settingsRef.current.sound) playChime('reward')
+          say('You’re back! I can feel the fresh air from here. Energy is full again.', 'reward')
           setCelebration({
             eyebrow: 'Walk verified by GPS',
             title: `+${res.ledger.tokens} 🌿   +${res.ledger.xp} XP`,
@@ -259,7 +295,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
       if (newPhotos) notify('success', photoLine[0])
     },
-    [mutate, notify, refreshEvidence],
+    [mutate, notify, refreshEvidence, say],
   )
 
   useEffect(() => {
@@ -399,14 +435,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<GameValue>(
     () => ({
-      ready, profile, settings, evidence, progress, toasts, celebration, isAIHost, app,
+      ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app,
       openApp: setApp,
       notify,
       dismissToast,
       dismissCelebration: () => setCelebration(null),
       accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings,
     }),
-    [ready, profile, settings, evidence, progress, toasts, celebration, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings],
+    [ready, profile, settings, evidence, progress, toasts, celebration, moss, dismissMoss, isAIHost, app, notify, dismissToast, accept, decline, submit, hint, abandon, buy, verify, cancelVerify, removeEvidence, importFile, exportBackup, resetAll, updateSettings],
   )
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

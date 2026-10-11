@@ -46,11 +46,12 @@ function OfferCard({ offer }: { offer: JobOffer }) {
   }
 
   return (
-    <article className={`offer ${elig.ok ? '' : 'is-locked'}`}>
+    <article className={`offer ${elig.ok ? '' : 'is-locked'} ${offer.featured ? 'is-featured' : ''}`}>
       <div className="offer__avatar" aria-hidden>
         {offer.client[0]}
       </div>
       <div className="offer__body">
+        {offer.featured && <p className="offer__featured">★ Today’s contract · 1.5× pay</p>}
         <p className="offer__client">
           {offer.client} <span className="muted">· {timeLeft(offer.expiresAt)}</span>
         </p>

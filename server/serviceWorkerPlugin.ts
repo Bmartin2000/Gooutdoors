@@ -3,23 +3,34 @@
  * (app shell, fonts, mission content, 3D scene chunk). No third-party PWA runtime needed.
  */
 import { createHash } from 'node:crypto'
-import type { Plugin } from 'vite'
+import { copyFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import type { Plugin, ResolvedConfig } from 'vite'
 
-const PUBLIC_FILES = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png']
+const PUBLIC_FILES = ['', 'index.html', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png']
 
 export function afkServiceWorker(): Plugin {
+  let config: ResolvedConfig
   return {
     name: 'afk-service-worker',
     apply: 'build',
+    configResolved(c) {
+      config = c
+    },
+    // Static hosts (GitHub Pages) serve 404.html for unknown paths: make it the app shell.
+    closeBundle() {
+      const out = join(config.root, config.build.outDir)
+      if (existsSync(join(out, 'index.html'))) copyFileSync(join(out, 'index.html'), join(out, '404.html'))
+    },
     generateBundle(_options, bundle) {
-      const assets = Object.keys(bundle)
-        .filter((file) => !file.endsWith('.map') && file !== 'index.html')
-        .map((file) => `/${file}`)
-      const precache = [...PUBLIC_FILES, ...assets]
+      const base = config.base.endsWith('/') ? config.base : `${config.base}/`
+      const assets = Object.keys(bundle).filter((file) => !file.endsWith('.map') && file !== 'index.html')
+      const precache = [...PUBLIC_FILES, ...assets].map((file) => `${base}${file}`)
       
       const source = `/* AFK.exe service worker — generated at build time. */
 const CACHE = 'afk-exe-__VERSION__';
 const PRECACHE = ${JSON.stringify(precache)};
+const BASE = ${JSON.stringify(config.base.endsWith('/') ? config.base : config.base + '/')};
 const NEVER_CACHE = ['/ollama/', '/afk-local/', '/afk-sync/'];
 
 self.addEventListener('install', (event) => {
@@ -43,7 +54,7 @@ self.addEventListener('fetch', (event) => {
 
   // App routes: network first so updates land, cached shell when offline.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html', { ignoreVary: true })));
+    event.respondWith(fetch(request).catch(() => caches.match(BASE + 'index.html', { ignoreVary: true })));
     return;
   }
   // Hashed assets: cache first.

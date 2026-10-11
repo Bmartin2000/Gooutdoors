@@ -29,14 +29,24 @@ export function AIStatusProvider({ children }: { children: ReactNode }) {
     warmRef.current = warm
   }, [warm])
 
+  // Only the computer that serves AFK.exe locally can reach Ollama. Anywhere else (a phone
+  // on the LAN, the installed phone app on GitHub Pages) is a capture device: never probe.
+  const isLocalHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+
   const recheck = useCallback(async () => {
+    if (!isLocalHost) {
+      const remote: AIDiagnostics = { ...initial, connection: 'remote-device', checkedAt: new Date().toISOString(), detail: 'This device captures walks and photos. The local AI runs on your desk computer.' }
+      setDiagnostics(remote)
+      return remote
+    }
     const next = await checkDiagnostics()
     setDiagnostics(next)
     return next
-  }, [])
+  }, [isLocalHost])
 
   useEffect(() => {
     void recheck()
+    if (!isLocalHost) return
     const tick = () => {
       if (document.visibilityState === 'visible') void recheck()
     }
@@ -50,7 +60,7 @@ export function AIStatusProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('offline', tick)
       document.removeEventListener('visibilitychange', tick)
     }
-  }, [recheck])
+  }, [recheck, isLocalHost])
 
   const warmUp = useCallback(() => {
     if (warmRef.current !== 'idle' || diagnostics.connection !== 'ready') return

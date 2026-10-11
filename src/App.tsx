@@ -6,14 +6,14 @@ import DeskPage from './desk/DeskPage.tsx'
 import OutsidePage from './outside/OutsidePage.tsx'
 
 export default function App() {
-  const { ready, isAIHost, settings } = useGame()
+  const { ready, settings } = useGame()
   usePreferences(settings)
   if (!ready) return <div className="boot" aria-busy="true" aria-label="Loading AFK.exe" />
   return (
     <ErrorBoundary>
       <Routes>
-        {/* The desk lives on the computer that runs Ollama; phones go straight outside. */}
-        <Route index element={isAIHost ? <DeskPage /> : <Navigate to="/outside" replace />} />
+        {/* The full game works on phones and static hosting; only AI tools need a local model. */}
+        <Route index element={<DeskPage />} />
         <Route path="outside" element={<OutsidePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

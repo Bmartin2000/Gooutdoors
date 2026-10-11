@@ -41,6 +41,8 @@ export default function OutsidePage() {
   const [showLogin, setShowLogin] = useState(false)
   const [params, setParams] = useSearchParams()
   const [pairing, setPairing] = useState<PhonePairing | null>(null)
+  // An unpaired phone owns its own game; paired phones can still send to a computer.
+  const sameDevice = isAIHost || !pairing?.token
   const [photos, setPhotos] = useState<MissionEvidence[]>([])
   const [pocket, setPocket] = useState(false)
   const [variantId, setVariantId] = useState<string | undefined>()
@@ -103,7 +105,7 @@ export default function OutsidePage() {
   const send = async (walk: WalkRecord) => {
     const bundle = await buildOuting(walk.summary, walkPhotos(walk))
     // On the desk computer itself: credit it right away and go back to the monitor.
-    if (isAIHost) {
+    if (sameDevice) {
       await deliverOuting(bundle)
       await w.markSent(walk.id)
       w.closeSummary()
@@ -133,7 +135,7 @@ export default function OutsidePage() {
   /** After a walk: deliver automatically when possible, otherwise show the summary with Share. */
   const afterWalk = async (walk: WalkRecord | undefined) => {
     if (!walk) return
-    if (isAIHost || (pairing?.token && navigator.onLine)) await send(walk)
+    if (sameDevice || (pairing?.token && navigator.onLine)) await send(walk)
   }
 
   const exportFile = async (walk: WalkRecord) => {
@@ -222,7 +224,7 @@ export default function OutsidePage() {
   return (
     <div className="outside">
       <header className="outside__top">
-        {isAIHost && (
+        {(
           <button type="button" className="icon-btn" onClick={() => navigate('/')} aria-label="Back to the desk" title="Back to the desk">
             <ArrowLeft size={20} />
           </button>
@@ -349,7 +351,7 @@ export default function OutsidePage() {
               Needs {w.rules.minMinutes} min and {w.rules.minDistanceM} m with a working GPS fix. Photos still count once your desk checks them.
             </p>
           )}
-          {isAIHost ? (
+          {sameDevice ? (
             <button type="button" className="btn btn--primary btn--xl btn--block" onClick={() => void send(w.walk!)}>
               <Send size={18} aria-hidden /> Back to my desk
             </button>
@@ -391,7 +393,7 @@ export default function OutsidePage() {
                   {h.summary?.verified ? ' ✓' : ''}
                 </span>
                 <span className="row-2">
-                  {(pairing?.token || isAIHost) && (
+                  {(pairing?.token || sameDevice) && (
                     <button type="button" className="btn btn--sm btn--primary" onClick={() => void send(h)} aria-label="Send to desk">
                       <Send size={13} />
                     </button>
